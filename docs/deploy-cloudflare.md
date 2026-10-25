@@ -31,14 +31,27 @@ Aplikasi dijalankan di Cloudflare Workers lewat adapter [OpenNext](https://openn
 
 ## Deploy
 
+Pakai database **branch `production` di Neon**, bukan `dev`, dan jangan jalankan seed di sana (akun seed `test@test.com` / `admin123` tidak boleh ada di URL publik).
+
 ```bash
+# 1. Migrasi ke branch production (POSTGRES_URL sementara di shell, jangan di .env)
+POSTGRES_URL='<connection string branch production>' pnpm db:migrate
+
+# 2. Login dan isi rahasia (nilai diketik di prompt, tidak muncul di layar)
 pnpm exec wrangler login
 pnpm exec wrangler secret put POSTGRES_URL
-pnpm exec wrangler secret put AUTH_SECRET
-pnpm deploy
+pnpm exec wrangler secret put AUTH_SECRET     # buat yang baru: openssl rand -base64 32
+pnpm exec wrangler secret put BASE_URL        # isi setelah tahu URL workers.dev
+pnpm exec wrangler secret put STRIPE_SECRET_KEY      # placeholder sampai Issue #12
+pnpm exec wrangler secret put STRIPE_WEBHOOK_SECRET  # placeholder sampai Issue #12
+
+# 3. Build dan deploy
+pnpm run cf:deploy
 ```
 
-Rahasia dimasukkan lewat `wrangler secret put`, bukan ke `wrangler.jsonc` atau repo.
+Gunakan `pnpm run cf:deploy`, bukan `pnpm deploy`: `deploy` adalah perintah bawaan pnpm yang berbeda.
+
+`cf:deploy` menyembunyikan `.env*` selama build, karena OpenNext membundel isi file itu ke dalam Worker. Rahasia produksi hanya lewat `wrangler secret put`, bukan `wrangler.jsonc` atau repo. `pnpm run cf:build` hanya membangun tanpa deploy.
 
 ## Catatan teknis
 
