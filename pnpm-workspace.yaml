@@ -1,0 +1,6 @@
+allowBuilds:
+  '@tailwindcss/oxide': false
+  esbuild: true
+  workerd: true
+nodeLinker: hoisted
+verifyDepsBeforeRun: false
