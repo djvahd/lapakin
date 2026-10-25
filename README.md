@@ -13,3 +13,7 @@ Fondasi: fork dari [nextjs/saas-starter](https://github.com/nextjs/saas-starter)
 ## Lisensi
 
 [AGPL-3.0](LICENSE). Pihak lain boleh memakai dan memodifikasi, tetapi bila menawarkannya sebagai layanan online, kode ubahannya wajib dibuka.
+
+## Atribusi
+
+Kode awal berasal dari [nextjs/saas-starter](https://github.com/nextjs/saas-starter) (MIT, hak cipta Vercel). Teks lisensinya ada di [licenses/nextjs-saas-starter-MIT.txt](licenses/nextjs-saas-starter-MIT.txt).
