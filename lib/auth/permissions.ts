@@ -5,7 +5,8 @@ const permissions = {
   'team:update': ['owner'],
   'member:invite': ['owner'],
   'member:remove': ['owner'],
-  'billing:manage': ['owner']
+  'billing:manage': ['owner'],
+  'contact:archive': ['owner']
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Permission = keyof typeof permissions;
