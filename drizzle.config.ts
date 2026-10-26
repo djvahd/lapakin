@@ -5,6 +5,7 @@ export default {
   out: './lib/db/migrations',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.POSTGRES_URL!,
+    // Migrasi memakai role pemilik (MIGRATION_URL); aplikasi memakai role lapakin_app (POSTGRES_URL).
+    url: (process.env.MIGRATION_URL ?? process.env.POSTGRES_URL)!,
   },
 } satisfies Config;

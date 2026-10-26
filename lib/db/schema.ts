@@ -1,12 +1,27 @@
 import {
   pgTable,
+  pgPolicy,
   serial,
   varchar,
   text,
   timestamp,
   integer,
+  jsonb,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
+
+// Konteks tenant diisi per permintaan oleh withTenant() (lib/db/tenant.ts).
+// Tanpa konteks nilainya NULL, sehingga policy tidak meloloskan baris apa pun.
+export const currentTeamId = sql`nullif(current_setting('app.team_id', true), '')::int`;
+
+// Pola RLS untuk tabel data tenant: pakai di argumen ketiga pgTable.
+export const tenantIsolation = () =>
+  pgPolicy('tenant_isolation', {
+    as: 'permissive',
+    for: 'all',
+    using: sql`team_id = ${currentTeamId}`,
+    withCheck: sql`team_id = ${currentTeamId}`,
+  });
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -43,16 +58,23 @@ export const teamMembers = pgTable('team_members', {
   joinedAt: timestamp('joined_at').notNull().defaultNow(),
 });
 
-export const activityLogs = pgTable('activity_logs', {
-  id: serial('id').primaryKey(),
-  teamId: integer('team_id')
-    .notNull()
-    .references(() => teams.id),
-  userId: integer('user_id').references(() => users.id),
-  action: text('action').notNull(),
-  timestamp: timestamp('timestamp').notNull().defaultNow(),
-  ipAddress: varchar('ip_address', { length: 45 }),
-});
+export const activityLogs = pgTable(
+  'activity_logs',
+  {
+    id: serial('id').primaryKey(),
+    teamId: integer('team_id')
+      .notNull()
+      .references(() => teams.id),
+    userId: integer('user_id').references(() => users.id),
+    action: text('action').notNull(),
+    entityType: varchar('entity_type', { length: 50 }),
+    entityId: integer('entity_id'),
+    metadata: jsonb('metadata'),
+    timestamp: timestamp('timestamp').notNull().defaultNow(),
+    ipAddress: varchar('ip_address', { length: 45 }),
+  },
+  () => [tenantIsolation()]
+);
 
 export const invitations = pgTable('invitations', {
   id: serial('id').primaryKey(),
