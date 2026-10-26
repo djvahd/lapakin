@@ -421,3 +421,22 @@ export async function deleteTag(actor: Actor, id: number): Promise<{ removedFrom
   ]);
   return { removedFrom: usage.n };
 }
+
+// Fungsi publik untuk modul lain (CRM, Sales, Invoicing): nama kontak berdasarkan id, tanpa
+// membaca tabel kontak langsung. Kontak toko lain tidak pernah muncul; id yang tidak ada dilewati.
+export async function getContactNames(
+  teamId: number,
+  ids: number[]
+): Promise<Map<number, { name: string; archived: boolean }>> {
+  const map = new Map<number, { name: string; archived: boolean }>();
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return map;
+  const [rows] = await withTenant(teamId, [
+    db
+      .select({ id: contacts.id, name: contacts.name, archivedAt: contacts.archivedAt })
+      .from(contacts)
+      .where(and(eq(contacts.teamId, teamId), inArray(contacts.id, unique))),
+  ]);
+  for (const r of rows) map.set(r.id, { name: r.name, archived: r.archivedAt !== null });
+  return map;
+}

@@ -123,3 +123,5 @@ modules/<nama>/
 - `drizzle.config.ts` memuat `modules/*/schema.ts` secara otomatis.
 - Teks audit log modul didaftarkan di `modules/<nama>/audit-labels.ts` dan digabung di `lib/activity-labels.ts`; tanpa itu halaman Activity menampilkan "Unknown action occurred".
 - UI modul: halaman server di `app/(dashboard)/dashboard/<nama>/` yang membaca lewat `service.ts`; form di `modules/<nama>/ui/` memakai `useActionState` dengan Server Actions; izin UI memakai `can()` hanya untuk tampilan.
+- Antarmodul: satu modul tidak membaca tabel modul lain. CRM memakai `getContact()` dan `getContactNames()` dari `modules/contacts/service.ts`; kunci asing komposit ke tabel modul lain tetap dipasang di skema agar database menolak rujukan lintas toko.
+- Data bawaan per toko (mis. tahap pipeline CRM) dibuat malas saat pertama dipakai (`listStages`), bukan lewat migrasi, karena toko dibuat saat sign-up; konflik nama unik diabaikan agar permintaan bersamaan aman.
