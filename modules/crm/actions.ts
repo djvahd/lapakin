@@ -4,17 +4,21 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { validatedActionWithTenant } from '@/lib/auth/middleware';
-import { parseActivityForm, parseMoveForm, parseOpportunityForm } from './form';
+import { parseActivityForm, parseMoveForm, parseOpportunityForm, parseStageForm } from './form';
 import {
   CrmError,
   archiveOpportunity,
   completeActivity,
   createActivity,
   createOpportunity,
+  createStage,
+  deleteStage,
   moveOpportunity,
+  moveStage,
   reopenActivity,
   restoreOpportunity,
   updateOpportunity,
+  updateStage,
 } from './service';
 
 // Form CRM membaca FormData sendiri (form.ts), karena nilai uang, tanggal, dan id opsional
@@ -33,6 +37,8 @@ const idOf = (formData: FormData, key = 'id') => {
 
 const refresh = (id?: number) => {
   revalidatePath('/dashboard/crm');
+  revalidatePath('/dashboard/crm/follow-ups');
+  revalidatePath('/dashboard/crm/stages');
   if (id) revalidatePath(`/dashboard/crm/${id}`);
 };
 
@@ -138,4 +144,56 @@ export const reopenActivityAction = validatedActionWithTenant(anyForm, null, asy
   }
   refresh(idOf(formData, 'opportunityId') ?? undefined);
   return { success: 'Follow-up reopened' };
+});
+
+// Kelola tahap: hanya owner (dicek di server).
+export const createStageAction = validatedActionWithTenant(anyForm, 'crm:stage-manage', async (_d, formData, ctx) => {
+  const form = parseStageForm(formData);
+  if (!form.ok) return { error: form.error };
+  try {
+    await createStage({ teamId: ctx.teamId, userId: ctx.user.id }, form.data);
+  } catch (e) {
+    return failure(e);
+  }
+  refresh();
+  return { success: 'Stage added' };
+});
+
+export const updateStageAction = validatedActionWithTenant(anyForm, 'crm:stage-manage', async (_d, formData, ctx) => {
+  const id = idOf(formData);
+  if (!id) return { error: 'Stage not found' };
+  const form = parseStageForm(formData);
+  if (!form.ok) return { error: form.error };
+  try {
+    await updateStage({ teamId: ctx.teamId, userId: ctx.user.id }, id, form.data);
+  } catch (e) {
+    return failure(e);
+  }
+  refresh();
+  return { success: 'Stage saved' };
+});
+
+export const moveStageAction = validatedActionWithTenant(anyForm, 'crm:stage-manage', async (_d, formData, ctx) => {
+  const id = idOf(formData);
+  const direction = formData.get('direction');
+  if (!id || (direction !== 'up' && direction !== 'down')) return { error: 'Stage not found' };
+  try {
+    await moveStage({ teamId: ctx.teamId, userId: ctx.user.id }, id, direction);
+  } catch (e) {
+    return failure(e);
+  }
+  refresh();
+  return { success: 'Stage moved' };
+});
+
+export const deleteStageAction = validatedActionWithTenant(anyForm, 'crm:stage-manage', async (_d, formData, ctx) => {
+  const id = idOf(formData);
+  if (!id) return { error: 'Stage not found' };
+  try {
+    await deleteStage({ teamId: ctx.teamId, userId: ctx.user.id }, id, idOf(formData, 'moveTo'));
+  } catch (e) {
+    return failure(e);
+  }
+  refresh();
+  return { success: 'Stage deleted' };
 });

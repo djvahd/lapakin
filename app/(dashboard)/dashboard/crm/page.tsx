@@ -10,7 +10,7 @@ import { listTeamMembers } from '@/lib/db/queries';
 import { boardHref, parseBoardParams } from '@/modules/crm/form';
 import { formatMoney, todayIn } from '@/modules/crm/format';
 import { listQuerySchema } from '@/modules/crm/schemas';
-import { getBoard, listOpportunities } from '@/modules/crm/service';
+import { countOverdueFollowUps, getBoard, listOpportunities } from '@/modules/crm/service';
 import { BoardCard } from '@/modules/crm/ui/board-card';
 
 const columnTone: Record<string, string> = { won: 'text-green-700', lost: 'text-red-700', open: 'text-gray-900' };
@@ -50,14 +50,27 @@ export default async function CrmPage({
     </form>
   );
 
+  const overdueMine = await countOverdueFollowUps(ctx.teamId, ctx.user.id, todayIn());
+
   const header = (
-    <div className="mb-6 flex items-center justify-between">
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
       <h1 className="text-lg lg:text-2xl font-medium text-gray-900">CRM</h1>
-      <Link href="/dashboard/crm/new">
-        <Button className="bg-orange-500 hover:bg-orange-600 text-white">
-          <Plus className="mr-2 h-4 w-4" /> New opportunity
-        </Button>
-      </Link>
+      <div className="flex flex-wrap items-center gap-4 text-sm">
+        <Link href="/dashboard/crm/follow-ups" className="text-orange-600">
+          Follow-ups
+          {overdueMine > 0 && (
+            <span className="ml-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700" aria-label={`${overdueMine} overdue`}>
+              {overdueMine} overdue
+            </span>
+          )}
+        </Link>
+        <Link href="/dashboard/crm/stages" className="text-orange-600">Stages</Link>
+        <Link href="/dashboard/crm/new">
+          <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+            <Plus className="mr-2 h-4 w-4" /> New opportunity
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 
