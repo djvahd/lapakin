@@ -38,14 +38,18 @@ MIGRATION_URL="$PROD_OWNER_URL" pnpm db:migrate
 # 2. Deploy kode baru (secret POSTGRES_URL masih URL pemilik, jadi login tetap jalan)
 pnpm run cf:deploy
 
-# 3. Setel password lapakin_app di production dan langsung kirim ke secret Worker.
-#    URL tidak ditampilkan; hanya mengalir lewat pipe ke wrangler.
-MIGRATION_URL="$PROD_OWNER_URL" node scripts/set-app-role-password.mjs --print | pnpm exec wrangler secret put POSTGRES_URL
+# 3. Setel password lapakin_app di production dan kirim langsung ke secret Worker.
+#    URL tidak ditampilkan. Bila ALTER ROLE gagal, skrip berhenti sebelum menyentuh secret.
+MIGRATION_URL="$PROD_OWNER_URL" node scripts/set-app-role-password.mjs --put-secret
 
 unset PROD_OWNER_URL
 ```
 
-Skrip dengan `MIGRATION_URL` dari variabel lingkungan hanya mau berjalan dengan `--print`, sehingga `.env` dev tidak tertimpa.
+Skrip dengan `MIGRATION_URL` dari variabel lingkungan hanya mau berjalan dengan `--print` atau `--put-secret`, sehingga `.env` dev tidak tertimpa.
+
+**Jangan** mengalirkan keluaran skrip ke `wrangler secret put` lewat pipe shell. Bila skrip gagal, pipe mengirim teks kosong, Wrangler tetap menyimpannya, dan Worker menjawab 500 dengan `POSTGRES_URL environment variable is not set` (kejadian nyata pada deploy produksi pertama). Pakai `--put-secret`.
+
+Cek hasil: `pnpm exec wrangler deployments list --name lapakin` harus menampilkan entri `Secret Change` baru.
 
 Verifikasi: masuk ke situs produksi, buka halaman Activity (harus menampilkan entri dan login baru tercatat). Untuk membuktikan isolasi di produksi tanpa menyentuh datanya, buat branch Neon turunan dari `production`, setel password `lapakin_app` di sana dengan skrip di atas, lalu jalankan `pnpm test` dengan `MIGRATION_URL` dan `POSTGRES_URL` branch itu, dan hapus branchnya.
 
