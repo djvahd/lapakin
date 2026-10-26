@@ -2,24 +2,28 @@
 //
 //   node scripts/set-app-role-password.mjs            -> perbarui .env (MIGRATION_URL = pemilik, POSTGRES_URL = lapakin_app)
 //   node scripts/set-app-role-password.mjs --print    -> hanya cetak connection string lapakin_app (untuk `wrangler secret put`)
-//   MIGRATION_URL=<url pemilik production> node scripts/set-app-role-password.mjs --print | pnpm exec wrangler secret put POSTGRES_URL
+//   MIGRATION_URL=<url pemilik production> node scripts/set-app-role-password.mjs --put-secret
+//                                         -> setel password, lalu kirim langsung ke secret POSTGRES_URL Worker
 //
 // Dijalankan dengan role pemilik: dibaca dari MIGRATION_URL, atau POSTGRES_URL bila .env belum dipisah.
 // Password tidak ditulis ke repo; dengan --print ia hanya tampil di terminal Anda.
 import { existsSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { neon } from '@neondatabase/serverless';
 
 const envPath = '.env';
 const print = process.argv.includes('--print');
+const putSecret = process.argv.includes('--put-secret');
+if (print && putSecret) throw new Error('Pilih salah satu: --print atau --put-secret.');
 const env = existsSync(envPath) ? readFileSync(envPath, 'utf8') : '';
 const get = (k) => (env.match(new RegExp(`^${k}=(.*)$`, 'm')) || [])[1]?.trim();
 
 // MIGRATION_URL dari variabel lingkungan (mis. untuk produksi) didahulukan dari .env.
 // Dalam kasus itu .env tidak boleh diubah, jadi hanya --print yang diizinkan.
 const fromShell = process.env.MIGRATION_URL;
-if (fromShell && !print) {
-  throw new Error('MIGRATION_URL dari variabel lingkungan hanya boleh dengan --print (agar .env dev tidak tertimpa).');
+if (fromShell && !print && !putSecret) {
+  throw new Error('MIGRATION_URL dari variabel lingkungan hanya boleh dengan --print atau --put-secret (agar .env dev tidak tertimpa).');
 }
 const ownerUrl = fromShell ?? get('MIGRATION_URL') ?? get('POSTGRES_URL');
 if (!ownerUrl) throw new Error('MIGRATION_URL / POSTGRES_URL tidak ada di environment maupun .env');
@@ -36,7 +40,20 @@ const app = new URL(ownerUrl);
 app.username = 'lapakin_app';
 app.password = password;
 
-if (print) {
+if (putSecret) {
+  // Kirim langsung ke secret Worker lewat stdin proses anak (tanpa pipe shell dan tanpa
+  // menampilkan URL). Karena ALTER ROLE di atas melempar error bila gagal, nilai kosong
+  // tidak pernah sampai ke sini.
+  const r = spawnSync(
+    process.execPath,
+    ['node_modules/wrangler/bin/wrangler.js', 'secret', 'put', 'POSTGRES_URL'],
+    { input: app.toString(), stdio: ['pipe', 'inherit', 'inherit'] }
+  );
+  if (r.status !== 0) {
+    throw new Error('wrangler secret put gagal. Password lapakin_app sudah diganti; ulangi perintah ini.');
+  }
+  console.log('Secret POSTGRES_URL di Worker diperbarui (role lapakin_app).');
+} else if (print) {
   console.log(app.toString());
 } else {
   const set = (text, k, v) =>
