@@ -1,5 +1,6 @@
 import { desc, and, eq, isNull } from 'drizzle-orm';
 import { db } from './drizzle';
+import { withTenant } from './tenant';
 import { activityLogs, teamMembers, teams, users } from './schema';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/session';
@@ -84,19 +85,29 @@ export async function getActivityLogs() {
     throw new Error('User not authenticated');
   }
 
-  return await db
-    .select({
-      id: activityLogs.id,
-      action: activityLogs.action,
-      timestamp: activityLogs.timestamp,
-      ipAddress: activityLogs.ipAddress,
-      userName: users.name
-    })
-    .from(activityLogs)
-    .leftJoin(users, eq(activityLogs.userId, users.id))
-    .where(eq(activityLogs.userId, user.id))
-    .orderBy(desc(activityLogs.timestamp))
-    .limit(10);
+  const membership = await getUserWithTeam(user.id);
+  if (!membership?.teamId) {
+    return [];
+  }
+  const teamId = membership.teamId;
+
+  // Audit log milik toko, bukan hanya milik pengguna ini. RLS menjadi lapis kedua.
+  const [rows] = await withTenant(teamId, [
+    db
+      .select({
+        id: activityLogs.id,
+        action: activityLogs.action,
+        timestamp: activityLogs.timestamp,
+        ipAddress: activityLogs.ipAddress,
+        userName: users.name
+      })
+      .from(activityLogs)
+      .leftJoin(users, eq(activityLogs.userId, users.id))
+      .where(eq(activityLogs.teamId, teamId))
+      .orderBy(desc(activityLogs.timestamp))
+      .limit(10)
+  ]);
+  return rows;
 }
 
 export async function getTeamForUser() {
