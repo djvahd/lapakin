@@ -5,6 +5,7 @@ import {
   parseBoardParams,
   parseMoveForm,
   parseOpportunityForm,
+  parseStageForm,
 } from '@/modules/crm/form';
 import { formatDate, formatMoney, isOverdue, todayIn } from '@/modules/crm/format';
 
@@ -144,5 +145,31 @@ describe('format tampilan', () => {
     expect(isOverdue('2026-10-27', '2026-10-26')).toBe(false);
     expect(isOverdue(null, '2026-10-26')).toBe(false);
     expect(isOverdue(undefined, '2026-10-26')).toBe(false);
+  });
+});
+
+describe('parseStageForm', () => {
+  it('membaca nama dan probabilitas, probabilitas kosong menjadi 0', () => {
+    expect(parseStageForm(fd([['name', ' Survey '], ['probability', '35']]))).toEqual({
+      ok: true,
+      data: { name: 'Survey', probability: 35 },
+    });
+    expect(parseStageForm(fd([['name', 'Survey'], ['probability', '']]))).toMatchObject({ ok: true, data: { probability: 0 } });
+    expect(parseStageForm(fd([['name', 'Survey']]))).toMatchObject({ ok: true, data: { probability: 0 } });
+  });
+
+  it('menolak nama kosong dan probabilitas yang bukan bilangan bulat 0 sampai 100 dengan pesan yang jelas', () => {
+    expect(parseStageForm(fd([['name', '  ']]))).toEqual({ ok: false, error: 'Stage name is required' });
+    const msg = 'Probability must be a whole number between 0 and 100';
+    for (const bad of ['101', '1000', '-5', '12.5', 'abc', '1e2']) {
+      expect(parseStageForm(fd([['name', 'X'], ['probability', bad]]))).toEqual({ ok: false, error: msg });
+    }
+    expect(parseStageForm(fd([['name', 'X'], ['probability', '100']])).ok).toBe(true);
+    expect(parseStageForm(fd([['name', 'X'], ['probability', '0']])).ok).toBe(true);
+  });
+
+  it('membatasi panjang nama', () => {
+    expect(parseStageForm(fd([['name', 'x'.repeat(51)]])).ok).toBe(false);
+    expect(parseStageForm(fd([['name', 'x'.repeat(50)]])).ok).toBe(true);
   });
 });

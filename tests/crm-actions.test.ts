@@ -18,7 +18,11 @@ import {
   completeActivityAction,
   createActivityAction,
   createOpportunityAction,
+  createStageAction,
+  deleteStageAction,
   moveOpportunityAction,
+  moveStageAction,
+  updateStageAction,
   reopenActivityAction,
   restoreOpportunityAction,
   updateOpportunityAction,
@@ -216,5 +220,67 @@ describe('aktivitas', () => {
     expect(
       await createActivityAction({}, fd([['opportunityId', String(id)], ['kind', 'todo'], ['summary', 'Dari member'], ['dueDate', '2026-11-11']]))
     ).toEqual({ success: 'Follow-up scheduled' });
+  });
+});
+
+describe('kelola tahap (hanya owner)', () => {
+  it('member ditolak di server untuk semua aksi tahap dan tidak ada yang berubah', async () => {
+    const survey = (await listStages(teamA)).find((s) => s.kind === 'open')!;
+    const before = (await listStages(teamA)).map((s) => s.name);
+    as('member');
+    expect(await createStageAction({}, fd([['name', 'Tak Boleh']]))).toEqual(DENIED);
+    expect(await updateStageAction({}, fd([['id', String(survey.id)], ['name', 'Tak Boleh']]))).toEqual(DENIED);
+    expect(await moveStageAction({}, fd([['id', String(survey.id)], ['direction', 'down']]))).toEqual(DENIED);
+    expect(await deleteStageAction({}, fd([['id', String(survey.id)]]))).toEqual(DENIED);
+    expect((await listStages(teamA)).map((s) => s.name)).toEqual(before);
+  });
+
+  it('owner menambah, mengubah, mengurutkan, dan menghapus tahap', async () => {
+    expect(await createStageAction({}, fd([['name', 'Survey Aksi'], ['probability', '30']]))).toEqual({ success: 'Stage added' });
+    let stage = (await listStages(teamA)).find((s) => s.name === 'Survey Aksi')!;
+    expect(stage).toMatchObject({ kind: 'open', probability: 30 });
+
+    expect(await updateStageAction({}, fd([['id', String(stage.id)], ['name', 'Survey Lapangan'], ['probability', '45']]))).toEqual({
+      success: 'Stage saved',
+    });
+    stage = (await listStages(teamA)).find((s) => s.id === stage.id)!;
+    expect(stage).toMatchObject({ name: 'Survey Lapangan', probability: 45 });
+
+    const indexBefore = (await listStages(teamA)).findIndex((s) => s.id === stage.id);
+    expect(await moveStageAction({}, fd([['id', String(stage.id)], ['direction', 'up']]))).toEqual({ success: 'Stage moved' });
+    expect((await listStages(teamA)).findIndex((s) => s.id === stage.id)).toBe(indexBefore - 1);
+
+    expect(await deleteStageAction({}, fd([['id', String(stage.id)]]))).toEqual({ success: 'Stage deleted' });
+    expect((await listStages(teamA)).some((s) => s.id === stage.id)).toBe(false);
+  });
+
+  it('input salah dan aturan domain menjadi pesan yang jelas', async () => {
+    expect(await createStageAction({}, fd([['name', 'X'], ['probability', '150']]))).toEqual({
+      error: 'Probability must be a whole number between 0 and 100',
+    });
+    expect(await createStageAction({}, fd([['name', 'new']]))).toEqual({ error: 'A stage with this name already exists' });
+    expect(await updateStageAction({}, fd([['name', 'Tanpa id']]))).toEqual({ error: 'Stage not found' });
+    expect(await moveStageAction({}, fd([['id', '1'], ['direction', 'sideways']]))).toEqual({ error: 'Stage not found' });
+
+    const won = (await listStages(teamA)).find((s) => s.kind === 'won')!;
+    expect(await moveStageAction({}, fd([['id', String(won.id)], ['direction', 'up']]))).toEqual({
+      error: 'Won and Lost always stay at the end',
+    });
+    expect(await deleteStageAction({}, fd([['id', String(won.id)]]))).toEqual({ error: 'Won and Lost cannot be deleted' });
+  });
+
+  it('menghapus tahap berisi peluang butuh tujuan, lalu memindahkannya', async () => {
+    await createStageAction({}, fd([['name', 'Berisi']]));
+    const stage = (await listStages(teamA)).find((s) => s.name === 'Berisi')!;
+    const oppId = await create('Penghuni Tahap', [['stageId', String(stage.id)]]);
+
+    expect(await deleteStageAction({}, fd([['id', String(stage.id)]]))).toEqual({
+      error: 'Choose a stage to move its opportunities to',
+    });
+    const qualified = (await listStages(teamA)).find((s) => s.name === 'Qualified')!;
+    expect(await deleteStageAction({}, fd([['id', String(stage.id)], ['moveTo', String(qualified.id)]]))).toEqual({
+      success: 'Stage deleted',
+    });
+    expect((await getOpportunity(teamA, oppId))?.stageId).toBe(qualified.id);
   });
 });

@@ -83,3 +83,16 @@ export const activityInputSchema = z.object({
 });
 
 export type ActivityInput = z.output<typeof activityInputSchema>;
+
+export const stageInputSchema = z.object({
+  name: z.string().trim().min(1, 'Stage name is required').max(50),
+  // Persen peluang menang; dasar nilai tertimbang. Won dan Lost memakai nilai tetap (100 dan 0).
+  probability: z
+    .number({ invalid_type_error: 'Probability must be a number' })
+    .int('Probability must be a whole number')
+    .min(0, 'Probability must be between 0 and 100')
+    .max(100, 'Probability must be between 0 and 100')
+    .default(0),
+});
+
+export type StageInput = z.output<typeof stageInputSchema>;

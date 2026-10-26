@@ -3,10 +3,12 @@ import {
   boardQuerySchema,
   moveInputSchema,
   opportunityInputSchema,
+  stageInputSchema,
   type ActivityInput,
   type BoardQuery,
   type MoveInput,
   type OpportunityInput,
+  type StageInput,
 } from './schemas';
 
 // Penerjemah antara FormData / query string dan skema Zod. Murni (tanpa database), jadi mudah dites.
@@ -99,4 +101,14 @@ export function boardHref(query: BoardQuery & { archived?: boolean }): string {
   if (query.archived) p.set('archived', '1');
   const s = p.toString();
   return s ? `/dashboard/crm?${s}` : '/dashboard/crm';
+}
+
+export function parseStageForm(fd: FormData): FormResult<StageInput> {
+  const raw = (text(fd, 'probability') ?? '').trim();
+  const probability = raw === '' ? 0 : /^\d{1,3}$/.test(raw) ? Number(raw) : Number.NaN;
+  const parsed = stageInputSchema.safeParse({ name: text(fd, 'name') ?? '', probability });
+  if (parsed.success) return { ok: true, data: parsed.data };
+  const field = parsed.error.issues[0]?.path[0];
+  if (field === 'probability') return { ok: false, error: 'Probability must be a whole number between 0 and 100' };
+  return { ok: false, error: firstError(parsed.error.issues) };
 }

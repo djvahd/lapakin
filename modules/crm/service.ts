@@ -1,4 +1,5 @@
-import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, lt, ne, sql } from 'drizzle-orm';
+import type { BatchItem } from 'drizzle-orm/batch';
 import { db } from '@/lib/db/drizzle';
 import { withTenant } from '@/lib/db/tenant';
 import { auditEntry } from '@/lib/audit';
@@ -12,7 +13,7 @@ import {
   type CrmOpportunity,
   type CrmStage,
 } from './schema';
-import type { ActivityInput, BoardQuery, ListQuery, MoveInput, OpportunityInput } from './schemas';
+import type { ActivityInput, BoardQuery, ListQuery, MoveInput, OpportunityInput, StageInput } from './schemas';
 
 // Layanan CRM. Semua fungsi menerima toko aktif dari getTenantContext(); semua query memfilter
 // team_id secara eksplisit (lapis 1) dan berjalan lewat withTenant (RLS, lapis 2). Kontak diakses
@@ -26,7 +27,10 @@ export type CrmErrorCode =
   | 'invalid_contact'
   | 'invalid_stage'
   | 'invalid_owner'
-  | 'activity_not_found';
+  | 'activity_not_found'
+  | 'stage_exists'
+  | 'stage_locked'
+  | 'stage_not_empty';
 
 const DEFAULT_MESSAGES: Record<CrmErrorCode, string> = {
   not_found: 'Opportunity not found',
@@ -35,6 +39,9 @@ const DEFAULT_MESSAGES: Record<CrmErrorCode, string> = {
   invalid_stage: 'Stage not found',
   invalid_owner: 'The owner must be a member of this team',
   activity_not_found: 'Follow-up not found',
+  stage_exists: 'A stage with this name already exists',
+  stage_locked: 'This stage cannot be changed that way',
+  stage_not_empty: 'Choose a stage to move its opportunities to',
 };
 
 export class CrmError extends Error {
@@ -501,3 +508,250 @@ async function setActivityDone(actor: Actor, id: number, done: boolean): Promise
 
 export const completeActivity = (actor: Actor, id: number) => setActivityDone(actor, id, true);
 export const reopenActivity = (actor: Actor, id: number) => setActivityDone(actor, id, false);
+
+// ---------------------------------------------------------------------------
+// Kelola tahap
+// ---------------------------------------------------------------------------
+
+const sqlState = (e: unknown): string | undefined =>
+  (e as { code?: string })?.code ?? (e as { cause?: { code?: string } })?.cause?.code;
+
+// Urutan kanonik: tahap terbuka (menurut posisi), lalu Won, lalu Lost. Won dan Lost selalu di ujung.
+function canonicalOrder(stages: CrmStage[]): CrmStage[] {
+  const sorted = [...stages].sort((a, b) => a.position - b.position || a.id - b.id);
+  return [
+    ...sorted.filter((s) => s.kind === 'open'),
+    ...sorted.filter((s) => s.kind === 'won'),
+    ...sorted.filter((s) => s.kind === 'lost'),
+  ];
+}
+
+// Perintah UPDATE hanya untuk tahap yang posisinya berubah, agar posisi kembali 0..n-1.
+const positionUpdates = (teamId: number, ordered: CrmStage[]) =>
+  ordered.flatMap((s, i) =>
+    s.position === i
+      ? []
+      : [db.update(crmStages).set({ position: i }).where(and(eq(crmStages.id, s.id), eq(crmStages.teamId, teamId)))]
+  );
+
+export async function listStageUsage(teamId: number) {
+  const stages = await listStages(teamId);
+  const [rows] = await withTenant(teamId, [
+    db
+      .select({ stageId: crmOpportunities.stageId, n: sql<number>`count(*)::int` })
+      .from(crmOpportunities)
+      .where(eq(crmOpportunities.teamId, teamId))
+      .groupBy(crmOpportunities.stageId),
+  ]);
+  const counts = new Map(rows.map((r) => [r.stageId, r.n]));
+  return stages.map((s) => ({ ...s, opportunityCount: counts.get(s.id) ?? 0 }));
+}
+
+// Tahap baru selalu terbuka dan masuk tepat sebelum Won; Won dan Lost bergeser satu posisi.
+export async function createStage(actor: Actor, input: StageInput): Promise<CrmStage> {
+  const { teamId, userId } = actor;
+  const ordered = canonicalOrder(await listStages(teamId));
+  const openCount = ordered.filter((s) => s.kind === 'open').length;
+
+  try {
+    const results = await withTenant(teamId, [
+      db
+        .update(crmStages)
+        .set({ position: sql`${crmStages.position} + 1` })
+        .where(and(eq(crmStages.teamId, teamId), ne(crmStages.kind, 'open'))),
+      db
+        .insert(crmStages)
+        .values({ teamId, name: input.name, position: openCount, kind: 'open', probability: input.probability })
+        .returning(),
+      auditEntry(teamId, userId, 'CRM_STAGE_CREATED', {
+        entityType: 'crm_stage',
+        metadata: { name: input.name },
+      }),
+    ]);
+    return (results[1] as CrmStage[])[0];
+  } catch (e) {
+    if (sqlState(e) === '23505') throw new CrmError('stage_exists');
+    throw e;
+  }
+}
+
+// Won selalu 100% dan Lost selalu 0%: probabilitas dari input hanya berlaku untuk tahap terbuka.
+export async function updateStage(actor: Actor, id: number, input: StageInput): Promise<CrmStage> {
+  const { teamId, userId } = actor;
+  const stage = (await listStages(teamId)).find((s) => s.id === id);
+  if (!stage) throw new CrmError('invalid_stage');
+  const probability = stage.kind === 'won' ? 100 : stage.kind === 'lost' ? 0 : input.probability;
+
+  try {
+    const results = await withTenant(teamId, [
+      db
+        .update(crmStages)
+        .set({ name: input.name, probability })
+        .where(and(eq(crmStages.id, id), eq(crmStages.teamId, teamId)))
+        .returning(),
+      auditEntry(teamId, userId, 'CRM_STAGE_UPDATED', {
+        entityType: 'crm_stage',
+        entityId: id,
+        metadata: { name: input.name, previousName: stage.name },
+      }),
+    ]);
+    return (results[0] as CrmStage[])[0];
+  } catch (e) {
+    if (sqlState(e) === '23505') throw new CrmError('stage_exists');
+    throw e;
+  }
+}
+
+// Menukar posisi tahap terbuka dengan tetangganya. Di ujung daftar tidak berbuat apa-apa.
+export async function moveStage(actor: Actor, id: number, direction: 'up' | 'down'): Promise<CrmStage[]> {
+  const { teamId, userId } = actor;
+  const ordered = canonicalOrder(await listStages(teamId));
+  const index = ordered.findIndex((s) => s.id === id);
+  if (index === -1) throw new CrmError('invalid_stage');
+  if (ordered[index].kind !== 'open') {
+    throw new CrmError('stage_locked', 'Won and Lost always stay at the end');
+  }
+
+  const target = direction === 'up' ? index - 1 : index + 1;
+  if (target < 0 || ordered[target].kind !== 'open') return ordered;
+
+  [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
+  const updates = positionUpdates(teamId, ordered);
+  if (updates.length === 0) return ordered;
+
+  const queries: BatchItem<'pg'>[] = [
+    ...updates,
+    auditEntry(teamId, userId, 'CRM_STAGE_MOVED', {
+      entityType: 'crm_stage',
+      entityId: id,
+      metadata: { name: ordered[target].name, direction },
+    }),
+  ];
+  await withTenant(teamId, queries as [BatchItem<'pg'>, ...BatchItem<'pg'>[]]);
+  return ordered.map((s, i) => ({ ...s, position: i }));
+}
+
+// Menghapus tahap terbuka. Peluang di dalamnya (termasuk yang diarsipkan) dipindah ke `moveTo`
+// dalam transaksi yang sama. Won, Lost, dan satu-satunya tahap terbuka tidak bisa dihapus.
+export async function deleteStage(actor: Actor, id: number, moveTo: number | null): Promise<{ moved: number }> {
+  const { teamId, userId } = actor;
+  const stages = await listStages(teamId);
+  const stage = stages.find((s) => s.id === id);
+  if (!stage) throw new CrmError('invalid_stage');
+  if (stage.kind !== 'open') throw new CrmError('stage_locked', 'Won and Lost cannot be deleted');
+  if (stages.filter((s) => s.kind === 'open').length <= 1) {
+    throw new CrmError('stage_locked', 'The pipeline needs at least one open stage');
+  }
+
+  const [[usage]] = await withTenant(teamId, [
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(crmOpportunities)
+      .where(and(eq(crmOpportunities.stageId, id), eq(crmOpportunities.teamId, teamId))),
+  ]);
+
+  let target: CrmStage | undefined;
+  if (usage.n > 0) {
+    if (moveTo === null) throw new CrmError('stage_not_empty');
+    target = stages.find((s) => s.id === moveTo && s.id !== id);
+    if (!target) throw new CrmError('invalid_stage');
+  }
+
+  const remaining = canonicalOrder(stages.filter((s) => s.id !== id));
+  const queries: BatchItem<'pg'>[] = [];
+  if (target) {
+    queries.push(
+      db
+        .update(crmOpportunities)
+        .set({ stageId: target.id, ...stageClosedFields(target, null), updatedAt: new Date() })
+        .where(and(eq(crmOpportunities.stageId, id), eq(crmOpportunities.teamId, teamId)))
+    );
+  }
+  queries.push(db.delete(crmStages).where(and(eq(crmStages.id, id), eq(crmStages.teamId, teamId))));
+  queries.push(...positionUpdates(teamId, remaining));
+  queries.push(
+    auditEntry(teamId, userId, 'CRM_STAGE_DELETED', {
+      entityType: 'crm_stage',
+      entityId: id,
+      metadata: { name: stage.name, moved: usage.n, movedTo: target?.name ?? null },
+    })
+  );
+
+  await withTenant(teamId, queries as [BatchItem<'pg'>, ...BatchItem<'pg'>[]]);
+  return { moved: usage.n };
+}
+
+// ---------------------------------------------------------------------------
+// Ringkasan tindak lanjut
+// ---------------------------------------------------------------------------
+
+export type FollowUp = {
+  id: number;
+  kind: string;
+  summary: string;
+  dueDate: string;
+  assignedTo: number | null;
+  assigneeName: string | null;
+  opportunityId: number;
+  opportunityTitle: string;
+};
+
+// Tindak lanjut yang belum selesai pada peluang yang tidak diarsipkan, urut menurut jatuh tempo.
+export async function listFollowUps(
+  teamId: number,
+  options: { assignedTo?: number; limit?: number } = {}
+): Promise<FollowUp[]> {
+  const conditions = [
+    eq(crmActivities.teamId, teamId),
+    isNull(crmActivities.doneAt),
+    isNull(crmOpportunities.archivedAt),
+  ];
+  if (options.assignedTo) conditions.push(eq(crmActivities.assignedTo, options.assignedTo));
+
+  const [rows] = await withTenant(teamId, [
+    db
+      .select({
+        id: crmActivities.id,
+        kind: crmActivities.kind,
+        summary: crmActivities.summary,
+        dueDate: crmActivities.dueDate,
+        assignedTo: crmActivities.assignedTo,
+        opportunityId: crmActivities.opportunityId,
+        opportunityTitle: crmOpportunities.title,
+      })
+      .from(crmActivities)
+      .innerJoin(
+        crmOpportunities,
+        and(eq(crmActivities.opportunityId, crmOpportunities.id), eq(crmOpportunities.teamId, crmActivities.teamId))
+      )
+      .where(and(...conditions))
+      .orderBy(asc(crmActivities.dueDate), asc(crmActivities.id))
+      .limit(options.limit ?? 200),
+  ]);
+
+  const names = await ownerNames(rows.map((r) => r.assignedTo));
+  return rows.map((r) => ({ ...r, assigneeName: r.assignedTo ? (names.get(r.assignedTo) ?? null) : null }));
+}
+
+// Jumlah tindak lanjut terlambat milik seseorang (jatuh tempo sebelum `today`, format YYYY-MM-DD).
+export async function countOverdueFollowUps(teamId: number, userId: number, today: string): Promise<number> {
+  const [[row]] = await withTenant(teamId, [
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(crmActivities)
+      .innerJoin(
+        crmOpportunities,
+        and(eq(crmActivities.opportunityId, crmOpportunities.id), eq(crmOpportunities.teamId, crmActivities.teamId))
+      )
+      .where(
+        and(
+          eq(crmActivities.teamId, teamId),
+          eq(crmActivities.assignedTo, userId),
+          isNull(crmActivities.doneAt),
+          isNull(crmOpportunities.archivedAt),
+          lt(crmActivities.dueDate, today)
+        )
+      ),
+  ]);
+  return row.n;
+}

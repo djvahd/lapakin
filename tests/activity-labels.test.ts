@@ -24,6 +24,11 @@ describe('moduleActivityText', () => {
     expect(moduleActivityText('CRM_ACTIVITY_CREATED', { summary: 'Telepon' })).toBe('You scheduled a follow-up "Telepon"');
     expect(moduleActivityText('CRM_ACTIVITY_DONE', { summary: 'Telepon' })).toBe('You completed a follow-up "Telepon"');
     expect(moduleActivityText('CRM_ACTIVITY_REOPENED', null)).toBe('You reopened a follow-up');
+    expect(moduleActivityText('CRM_STAGE_CREATED', { name: 'Survey' })).toBe('You added the pipeline stage "Survey"');
+    expect(moduleActivityText('CRM_STAGE_UPDATED', { name: 'Survey' })).toBe('You updated the pipeline stage "Survey"');
+    expect(moduleActivityText('CRM_STAGE_MOVED', { name: 'Survey' })).toBe('You reordered the pipeline stage "Survey"');
+    expect(moduleActivityText('CRM_STAGE_DELETED', { name: 'Survey' })).toBe('You deleted the pipeline stage "Survey"');
+    expect(moduleActivityText('CRM_STAGE_DELETED', null)).toBe('You deleted the pipeline stage');
   });
 
   it('tetap menghasilkan teks bila metadata kosong atau bentuknya salah', () => {
