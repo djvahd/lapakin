@@ -33,6 +33,11 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <h1 className="text-lg lg:text-2xl font-medium text-gray-900">{contact.name}</h1>
         <ContactBadges contact={contact} tags={contact.tags} />
+        {!archived && (
+          <Link href={`/dashboard/crm/new?contact=${contact.id}`} className="text-sm text-orange-600">
+            New opportunity →
+          </Link>
+        )}
       </div>
 
       {archived && (

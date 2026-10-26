@@ -1,16 +1,17 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { fieldClass } from '@/components/ui/field';
 import type { ActionState } from '@/lib/auth/middleware';
+import { useKeepFormAction } from '@/lib/use-keep-form-action';
 import type { ContactKind } from '../schema';
 import type { TagSummary } from '../service';
 
-export const fieldClass =
-  'w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50';
+export { fieldClass } from '@/components/ui/field';
 
 export type ContactFormValues = {
   id?: number;
@@ -35,11 +36,11 @@ type Props = {
 };
 
 export function ContactForm({ action, submitLabel, companies, tags, initial }: Props) {
-  const [state, formAction, pending] = useActionState<ActionState, FormData>(action, {});
+  const [state, onSubmit, pending] = useKeepFormAction(action);
   const [kind, setKind] = useState<ContactKind>(initial?.kind ?? 'person');
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form onSubmit={onSubmit} className="space-y-4">
       {initial?.id && <input type="hidden" name="id" value={initial.id} />}
 
       <div className="grid gap-4 sm:grid-cols-2">
