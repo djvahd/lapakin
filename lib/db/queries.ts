@@ -100,6 +100,7 @@ export async function getActivityLogs() {
         timestamp: activityLogs.timestamp,
         ipAddress: activityLogs.ipAddress,
         userId: activityLogs.userId,
+        metadata: activityLogs.metadata,
         userName: users.name,
         userEmail: users.email
       })

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ActivityType } from '@/lib/db/schema';
 import { getActivityLogs, getUser } from '@/lib/db/queries';
+import { moduleActivityText } from '@/lib/activity-labels';
 
 const iconMap: Record<ActivityType, LucideIcon> = {
   [ActivityType.SIGN_UP]: UserPlus,
@@ -73,10 +74,11 @@ function formatAction(action: ActivityType): string {
 
 // Log milik toko, jadi pelakunya bisa anggota lain: "You ..." hanya untuk pengguna ini.
 function describe(
-  action: ActivityType,
-  actor: { isMe: boolean; name: string }
+  action: string,
+  actor: { isMe: boolean; name: string },
+  metadata?: unknown
 ): string {
-  const text = formatAction(action);
+  const text = moduleActivityText(action, metadata) ?? formatAction(action as ActivityType);
   return actor.isMe
     ? text
     : text.replace(/^You/, actor.name).replace(' your ', ' their ');
@@ -99,10 +101,14 @@ export default async function ActivityPage() {
             <ul className="space-y-4">
               {logs.map((log) => {
                 const Icon = iconMap[log.action as ActivityType] || Settings;
-                const formattedAction = describe(log.action as ActivityType, {
-                  isMe: log.userId === me?.id,
-                  name: log.userName || log.userEmail || 'Someone'
-                });
+                const formattedAction = describe(
+                  log.action,
+                  {
+                    isMe: log.userId === me?.id,
+                    name: log.userName || log.userEmail || 'Someone'
+                  },
+                  log.metadata
+                );
 
                 return (
                   <li key={log.id} className="flex items-center space-x-4">
