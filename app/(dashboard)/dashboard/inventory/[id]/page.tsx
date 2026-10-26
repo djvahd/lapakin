@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { can } from '@/lib/auth/permissions';
 import { getTenantContext } from '@/lib/auth/tenant';
 import { archiveProductAction, restoreProductAction, updateProductAction } from '@/modules/inventory/actions';
-import { getProduct } from '@/modules/inventory/service';
+import { movementQuerySchema } from '@/modules/inventory/schemas';
+import { getProduct, listMovements } from '@/modules/inventory/service';
+import { MovementList } from '@/modules/inventory/ui/movement-list';
 import { ProductForm } from '@/modules/inventory/ui/product-form';
 import { StockPanel } from '@/modules/inventory/ui/stock-panel';
 import { ToggleButton } from '@/modules/inventory/ui/toggle-button';
@@ -22,6 +24,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const archived = product.archivedAt !== null;
   const canArchive = can(ctx.role, 'inventory:archive');
   const active = product.variants.filter((v) => !v.archivedAt);
+  const history = await listMovements(ctx.teamId, movementQuerySchema.parse({ productId: product.id, pageSize: 10 }));
 
   return (
     <section className="flex-1 p-4 lg:p-8 space-y-6">
@@ -74,6 +77,20 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               trackStock: product.trackStock,
             }))}
           />
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-3xl">
+        <CardHeader>
+          <CardTitle>Recent stock movements</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <MovementList items={history.items} showProduct={false} />
+          {history.total > history.items.length && (
+            <Link href={`/dashboard/inventory/movements?product=${product.id}`} className="text-sm text-orange-600">
+              View all {history.total} movements →
+            </Link>
+          )}
         </CardContent>
       </Card>
 
