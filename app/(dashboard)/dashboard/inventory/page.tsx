@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { getTenantContext } from '@/lib/auth/tenant';
 import { listHref, parseListParams } from '@/modules/inventory/form';
+import { listQuerySchema } from '@/modules/inventory/schemas';
 import { listProducts } from '@/modules/inventory/service';
 
 export default async function InventoryPage({
@@ -25,17 +26,31 @@ export default async function InventoryPage({
   }
 
   const filtered = Boolean(query.q || query.lowStock || query.archived);
+  // Ringkasan stok menipis: tampil di daftar biasa saja, bukan saat sudah memfilter.
+  const lowCount = filtered ? 0 : (await listProducts(ctx.teamId, listQuerySchema.parse({ lowStock: true, pageSize: 1 }))).total;
 
   return (
     <section className="flex-1 p-4 lg:p-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-lg lg:text-2xl font-medium text-gray-900">Inventory</h1>
-        <Link href="/dashboard/inventory/new">
-          <Button className="bg-orange-500 hover:bg-orange-600 text-white">
-            <Plus className="mr-2 h-4 w-4" /> New product
-          </Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard/inventory/movements" className="text-sm text-orange-600">Stock history</Link>
+          <Link href="/dashboard/inventory/new">
+            <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+              <Plus className="mr-2 h-4 w-4" /> New product
+            </Button>
+          </Link>
+        </div>
       </div>
+
+      {lowCount > 0 && (
+        <Link
+          href={listHref(query, { lowStock: true })}
+          className="mb-6 block rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
+          {lowCount} {lowCount === 1 ? 'product is' : 'products are'} low on stock. View them →
+        </Link>
+      )}
 
       <form method="get" className="mb-6 flex flex-wrap items-center gap-3" role="search">
         <Input name="q" defaultValue={query.q ?? ''} placeholder="Search name or SKU" aria-label="Search" className="max-w-xs" />

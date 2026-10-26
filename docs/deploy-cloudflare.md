@@ -90,3 +90,9 @@ Lalu uji di situs produksi: masuk, buka halaman modul yang baru, dan buat satu d
 Rollback: kode lama tetap berjalan di skema baru (hanya penambahan), jadi cukup deploy ulang versi sebelumnya dengan `wrangler rollback`; jangan membatalkan migrasi.
 
 Tabel baru otomatis dapat hak untuk `lapakin_app` lewat default privileges (migrasi 0002), jadi tidak ada langkah GRANT tambahan.
+
+### Catatan rilis modul Inventory (migrasi 0005)
+
+- `0005_inventory.sql` membuat `inv_products`, `inv_variants`, `inv_stock_movements` dan mencabut `UPDATE`/`DELETE` pada `inv_stock_movements` dari `lapakin_app` (buku besar stok hanya bertambah). Pencabutan ada di akhir berkas, jadi berlaku setelah default privileges memberi hak ke tabel baru.
+- Setelah deploy, uji di produksi: buka Inventory, buat produk uji, terima stok, coba keluarkan lebih dari stok (harus ditolak dengan pesan "Not enough stock"), lalu arsipkan produknya (hak arsip hanya owner).
+- Mutasi stok tidak bisa dihapus atau diubah, jadi data uji hanya bisa diarsipkan, bukan dihapus.
