@@ -1,5 +1,6 @@
 import { contactAuditLabels } from '@/modules/contacts/audit-labels';
 import { crmAuditLabels } from '@/modules/crm/audit-labels';
+import { inventoryAuditLabels } from '@/modules/inventory/audit-labels';
 
 export type ActivityMeta = Record<string, unknown> | null;
 export type ActivityLabels = Record<string, (meta: ActivityMeta) => string>;
@@ -8,6 +9,7 @@ export type ActivityLabels = Record<string, (meta: ActivityMeta) => string>;
 const registry: ActivityLabels = {
   ...contactAuditLabels,
   ...crmAuditLabels,
+  ...inventoryAuditLabels,
 };
 
 // Teks untuk aksi modul, atau null bila aksi itu bukan milik modul mana pun

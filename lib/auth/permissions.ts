@@ -11,7 +11,10 @@ const permissions = {
   'contact:tag-manage': ['owner'],
   // Membuat, mengubah, dan memindahkan peluang terbuka untuk semua anggota.
   'crm:archive': ['owner'],
-  'crm:stage-manage': ['owner']
+  'crm:stage-manage': ['owner'],
+  // Menerima dan mengeluarkan stok terbuka untuk semua anggota; koreksi hasil hitung dan arsip hanya owner.
+  'inventory:adjust': ['owner'],
+  'inventory:archive': ['owner']
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Permission = keyof typeof permissions;
