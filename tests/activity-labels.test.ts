@@ -8,6 +8,8 @@ describe('moduleActivityText', () => {
     expect(moduleActivityText('CONTACT_ARCHIVED', { name: 'Budi' })).toBe('You archived contact "Budi"');
     expect(moduleActivityText('CONTACT_RESTORED', { name: 'Budi' })).toBe('You restored contact "Budi"');
     expect(moduleActivityText('CONTACT_TAG_CREATED', { name: 'VIP' })).toBe('You added the tag "VIP"');
+    expect(moduleActivityText('CONTACT_TAG_UPDATED', { name: 'VIP' })).toBe('You updated the tag "VIP"');
+    expect(moduleActivityText('CONTACT_TAG_DELETED', { name: 'VIP' })).toBe('You deleted the tag "VIP"');
   });
 
   it('tetap menghasilkan teks bila metadata kosong atau bentuknya salah', () => {

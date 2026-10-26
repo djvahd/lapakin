@@ -60,3 +60,33 @@ Gunakan `pnpm run cf:deploy`, bukan `pnpm deploy`: `deploy` adalah perintah bawa
 - **Windows:** adapter membuat symlink bertipe file yang tidak bisa dibaca esbuild. `pnpm-workspace.yaml` memakai `nodeLinker: hoisted` agar tidak ada symlink pnpm, dan `verifyDepsBeforeRun: false` agar pnpm tidak memicu `install` ulang saat menjalankan skrip. Di Linux atau macOS keduanya bisa dilepas.
 - **Next.js 16:** `experimental.ppr` dan `clientSegmentCache` dihapus karena tidak ada lagi di Next 16.
 - **`/pricing`:** dirender saat request karena memanggil Stripe. Diganti di Issue #12.
+
+## Checklist rilis (kode yang membawa migrasi)
+
+Urutan ini wajib: kode baru bergantung pada skema baru, dan skema baru tidak merusak kode lama (kolom dan tabel hanya ditambah).
+
+Di satu jendela Git Bash:
+
+```bash
+read -rs -p "Owner URL production (direct): " PROD_OWNER_URL; echo
+
+# 1. Lihat apa yang belum diterapkan di production (hanya membaca)
+MIGRATION_URL="$PROD_OWNER_URL" node scripts/migration-status.mjs
+
+# 2. Terapkan migrasi sebagai pemilik
+MIGRATION_URL="$PROD_OWNER_URL" pnpm db:migrate
+
+# 3. Pastikan tidak ada yang PENDING
+MIGRATION_URL="$PROD_OWNER_URL" node scripts/migration-status.mjs
+
+unset PROD_OWNER_URL
+
+# 4. Deploy kode (secret POSTGRES_URL tetap lapakin_app; tidak perlu diubah)
+pnpm run cf:deploy
+```
+
+Lalu uji di situs produksi: masuk, buka halaman modul yang baru, dan buat satu data uji yang kemudian Anda hapus atau arsipkan.
+
+Rollback: kode lama tetap berjalan di skema baru (hanya penambahan), jadi cukup deploy ulang versi sebelumnya dengan `wrangler rollback`; jangan membatalkan migrasi.
+
+Tabel baru otomatis dapat hak untuk `lapakin_app` lewat default privileges (migrasi 0002), jadi tidak ada langkah GRANT tambahan.

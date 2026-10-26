@@ -6,7 +6,9 @@ const permissions = {
   'member:invite': ['owner'],
   'member:remove': ['owner'],
   'billing:manage': ['owner'],
-  'contact:archive': ['owner']
+  'contact:archive': ['owner'],
+  // Mengubah atau menghapus tag memengaruhi semua anggota; membuat tag terbuka untuk semua.
+  'contact:tag-manage': ['owner']
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Permission = keyof typeof permissions;

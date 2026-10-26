@@ -4,6 +4,7 @@ import { Plus, SearchX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { can } from '@/lib/auth/permissions';
 import { getTenantContext } from '@/lib/auth/tenant';
 import { listHref, parseListParams } from '@/modules/contacts/form';
 import { listContacts, listTags } from '@/modules/contacts/service';
@@ -125,7 +126,7 @@ export default async function ContactsPage({
         </CardContent>
       </Card>
 
-      <TagsPanel tags={tags} />
+      <TagsPanel tags={tags} canManage={can(ctx.role, 'contact:tag-manage')} />
     </section>
   );
 }
