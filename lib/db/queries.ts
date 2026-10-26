@@ -1,4 +1,4 @@
-import { desc, and, eq, isNull } from 'drizzle-orm';
+import { asc, desc, and, eq, isNull } from 'drizzle-orm';
 import { db } from './drizzle';
 import { withTenant } from './tenant';
 import { activityLogs, teamMembers, teams, users } from './schema';
@@ -141,4 +141,14 @@ export async function getTeamForUser() {
   });
 
   return result?.team || null;
+}
+
+// Anggota toko, untuk pilihan penanggung jawab di modul. Tabel inti (tanpa RLS), jadi filter team_id eksplisit.
+export async function listTeamMembers(teamId: number) {
+  return db
+    .select({ id: users.id, name: users.name, email: users.email, role: teamMembers.role })
+    .from(teamMembers)
+    .innerJoin(users, eq(users.id, teamMembers.userId))
+    .where(and(eq(teamMembers.teamId, teamId), isNull(users.deletedAt)))
+    .orderBy(asc(users.name), asc(users.email));
 }
