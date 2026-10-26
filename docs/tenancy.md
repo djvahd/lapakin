@@ -63,3 +63,17 @@ await audit(teamId, userId, 'ORDER_CREATED', { entityType: 'order', entityId: 7,
 ## Tes
 
 `pnpm test` menjalankan tes integrasi terhadap branch dev Neon (butuh `POSTGRES_URL` sebagai `lapakin_app` dan `MIGRATION_URL` pemilik). Tes sengaja gagal bila aplikasi tersambung sebagai role yang bypass RLS.
+
+## Sesi, role, dan izin
+
+- Sesi (JWT) menyimpan `teamId` aktif. Sesi lama tanpa `teamId` memakai keanggotaan paling awal.
+- `getTenantContext()` (`lib/auth/tenant.ts`) mengembalikan `{ user, teamId, role }`. Role selalu dari `team_members`, bukan `users.role` (kolom itu tidak dipakai untuk otorisasi). Bila `teamId` di sesi bukan keanggotaan pengguna, hasilnya `null`, tidak jatuh ke toko lain.
+- Izin didefinisikan di `lib/auth/permissions.ts`; modul menambahkan izinnya sendiri di sana.
+
+```ts
+export const renameStore = validatedActionWithTenant(schema, 'team:update', async (data, _, ctx) => {
+  // ctx.teamId, ctx.user, ctx.role
+});
+```
+
+Pengecekan izin dilakukan di server di `validatedActionWithTenant`. Menonaktifkan tombol di UI hanya untuk tampilan.

@@ -19,6 +19,8 @@ export async function comparePasswords(
 
 type SessionData = {
   user: { id: number };
+  // Toko aktif. Sesi lama tanpa teamId memakai keanggotaan pertama (lihat getTenantContext).
+  teamId?: number;
   expires: string;
 };
 
@@ -43,10 +45,11 @@ export async function getSession() {
   return await verifyToken(session);
 }
 
-export async function setSession(user: NewUser) {
+export async function setSession(user: NewUser, teamId?: number) {
   const expiresInOneDay = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const session: SessionData = {
     user: { id: user.id! },
+    teamId,
     expires: expiresInOneDay.toISOString(),
   };
   const encryptedSession = await signToken(session);

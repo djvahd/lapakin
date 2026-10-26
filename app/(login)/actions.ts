@@ -22,7 +22,8 @@ import { createCheckoutSession } from '@/lib/payments/stripe';
 import { getUser, getUserWithTeam } from '@/lib/db/queries';
 import {
   validatedAction,
-  validatedActionWithUser
+  validatedActionWithUser,
+  validatedActionWithTenant
 } from '@/lib/auth/middleware';
 
 async function logActivity(
@@ -80,7 +81,7 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
   }
 
   await Promise.all([
-    setSession(foundUser),
+    setSession(foundUser, foundTeam?.id),
     logActivity(foundTeam?.id, foundUser.id, ActivityType.SIGN_IN)
   ]);
 
@@ -202,7 +203,7 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
   await Promise.all([
     db.insert(teamMembers).values(newTeamMember),
     logActivity(teamId, createdUser.id, ActivityType.SIGN_UP),
-    setSession(createdUser)
+    setSession(createdUser, teamId)
   ]);
 
   const redirectTo = formData.get('redirect') as string | null;
@@ -355,30 +356,43 @@ const removeTeamMemberSchema = z.object({
   memberId: z.number()
 });
 
-export const removeTeamMember = validatedActionWithUser(
+export const removeTeamMember = validatedActionWithTenant(
   removeTeamMemberSchema,
-  async (data, _, user) => {
+  'member:remove',
+  async (data, _, ctx) => {
     const { memberId } = data;
-    const userWithTeam = await getUserWithTeam(user.id);
 
-    if (!userWithTeam?.teamId) {
-      return { error: 'User is not part of a team' };
+    const [target] = await db
+      .select({ role: teamMembers.role })
+      .from(teamMembers)
+      .where(
+        and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, ctx.teamId))
+      )
+      .limit(1);
+
+    if (!target) {
+      return { error: 'Team member not found' };
+    }
+
+    if (target.role === 'owner') {
+      const [{ owners }] = await db
+        .select({ owners: sql<number>`count(*)::int` })
+        .from(teamMembers)
+        .where(
+          and(eq(teamMembers.teamId, ctx.teamId), eq(teamMembers.role, 'owner'))
+        );
+      if (owners <= 1) {
+        return { error: 'A team must have at least one owner.' };
+      }
     }
 
     await db
       .delete(teamMembers)
       .where(
-        and(
-          eq(teamMembers.id, memberId),
-          eq(teamMembers.teamId, userWithTeam.teamId)
-        )
+        and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, ctx.teamId))
       );
 
-    await logActivity(
-      userWithTeam.teamId,
-      user.id,
-      ActivityType.REMOVE_TEAM_MEMBER
-    );
+    await logActivity(ctx.teamId, ctx.user.id, ActivityType.REMOVE_TEAM_MEMBER);
 
     return { success: 'Team member removed successfully' };
   }
@@ -389,15 +403,13 @@ const inviteTeamMemberSchema = z.object({
   role: z.enum(['member', 'owner'])
 });
 
-export const inviteTeamMember = validatedActionWithUser(
+export const inviteTeamMember = validatedActionWithTenant(
   inviteTeamMemberSchema,
-  async (data, _, user) => {
+  'member:invite',
+  async (data, _, ctx) => {
     const { email, role } = data;
-    const userWithTeam = await getUserWithTeam(user.id);
-
-    if (!userWithTeam?.teamId) {
-      return { error: 'User is not part of a team' };
-    }
+    const userWithTeam = { teamId: ctx.teamId };
+    const user = ctx.user;
 
     const existingMember = await db
       .select()
@@ -448,5 +460,24 @@ export const inviteTeamMember = validatedActionWithUser(
     // await sendInvitationEmail(email, userWithTeam.team.name, role)
 
     return { success: 'Invitation sent successfully' };
+  }
+);
+
+const updateTeamNameSchema = z.object({
+  name: z.string().trim().min(1, 'Store name is required').max(100)
+});
+
+export const updateTeamName = validatedActionWithTenant(
+  updateTeamNameSchema,
+  'team:update',
+  async (data, _, ctx) => {
+    await db
+      .update(teams)
+      .set({ name: data.name, updatedAt: new Date() })
+      .where(eq(teams.id, ctx.teamId));
+
+    await logActivity(ctx.teamId, ctx.user.id, ActivityType.UPDATE_TEAM);
+
+    return { success: 'Store name updated successfully' };
   }
 );

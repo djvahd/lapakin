@@ -12,7 +12,11 @@ import {
 import { customerPortalAction } from '@/lib/payments/actions';
 import { useActionState } from 'react';
 import { TeamDataWithMembers, User } from '@/lib/db/schema';
-import { removeTeamMember, inviteTeamMember } from '@/app/(login)/actions';
+import {
+  removeTeamMember,
+  inviteTeamMember,
+  updateTeamName
+} from '@/app/(login)/actions';
 import useSWR from 'swr';
 import { Suspense } from 'react';
 import { Input } from '@/components/ui/input';
@@ -26,6 +30,64 @@ type ActionState = {
 };
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+// Role diambil dari keanggotaan di toko (team_members), bukan dari users.role.
+// Ini hanya untuk tampilan; server memeriksa izin lewat can().
+function useMembership() {
+  const { data: user } = useSWR<User>('/api/user', fetcher);
+  const { data: team } = useSWR<TeamDataWithMembers>('/api/team', fetcher);
+  const me = team?.teamMembers?.find((m) => m.user.id === user?.id);
+  return { userId: user?.id, isOwner: me?.role === 'owner' };
+}
+
+function StoreName() {
+  const { data: team } = useSWR<TeamDataWithMembers>('/api/team', fetcher);
+  const { isOwner } = useMembership();
+  const [state, action, isPending] = useActionState<ActionState, FormData>(
+    updateTeamName,
+    {}
+  );
+
+  return (
+    <Card className="mb-8">
+      <CardHeader>
+        <CardTitle>Store Name</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form action={action} className="space-y-4">
+          <div>
+            <Label htmlFor="name" className="mb-2">
+              Name
+            </Label>
+            <Input
+              id="name"
+              name="name"
+              defaultValue={team?.name ?? ''}
+              key={team?.name}
+              maxLength={100}
+              required
+              disabled={!isOwner}
+            />
+          </div>
+          {state.error && <p className="text-red-500">{state.error}</p>}
+          {state.success && <p className="text-green-500">{state.success}</p>}
+          <Button
+            type="submit"
+            className="bg-orange-500 hover:bg-orange-600 text-white"
+            disabled={isPending || !isOwner}
+          >
+            {isPending ? 'Saving...' : 'Save'}
+          </Button>
+          {!isOwner && (
+            <p className="text-sm text-muted-foreground">
+              Only the team owner can rename the store.
+            </p>
+          )}
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
 
 function SubscriptionSkeleton() {
   return (
@@ -99,6 +161,7 @@ function TeamMembers() {
     ActionState,
     FormData
   >(removeTeamMember, {});
+  const { userId, isOwner } = useMembership();
 
   const getUserDisplayName = (user: Pick<User, 'id' | 'name' | 'email'>) => {
     return user.name || user.email || 'Unknown User';
@@ -124,7 +187,7 @@ function TeamMembers() {
       </CardHeader>
       <CardContent>
         <ul className="space-y-4">
-          {teamData.teamMembers.map((member, index) => (
+          {teamData.teamMembers.map((member) => (
             <li key={member.id} className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <Avatar>
@@ -153,7 +216,7 @@ function TeamMembers() {
                   </p>
                 </div>
               </div>
-              {index > 1 ? (
+              {isOwner && member.user.id !== userId ? (
                 <form action={removeAction}>
                   <input type="hidden" name="memberId" value={member.id} />
                   <Button
@@ -188,8 +251,7 @@ function InviteTeamMemberSkeleton() {
 }
 
 function InviteTeamMember() {
-  const { data: user } = useSWR<User>('/api/user', fetcher);
-  const isOwner = user?.role === 'owner';
+  const { isOwner } = useMembership();
   const [inviteState, inviteAction, isInvitePending] = useActionState<
     ActionState,
     FormData
@@ -275,6 +337,9 @@ export default function SettingsPage() {
       <h1 className="text-lg lg:text-2xl font-medium mb-6">Team Settings</h1>
       <Suspense fallback={<SubscriptionSkeleton />}>
         <ManageSubscription />
+      </Suspense>
+      <Suspense fallback={<TeamMembersSkeleton />}>
+        <StoreName />
       </Suspense>
       <Suspense fallback={<TeamMembersSkeleton />}>
         <TeamMembers />

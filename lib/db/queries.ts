@@ -99,7 +99,9 @@ export async function getActivityLogs() {
         action: activityLogs.action,
         timestamp: activityLogs.timestamp,
         ipAddress: activityLogs.ipAddress,
-        userName: users.name
+        userId: activityLogs.userId,
+        userName: users.name,
+        userEmail: users.email
       })
       .from(activityLogs)
       .leftJoin(users, eq(activityLogs.userId, users.id))
