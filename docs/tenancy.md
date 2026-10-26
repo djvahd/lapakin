@@ -23,9 +23,33 @@ pnpm db:migrate                          # membuat role lapakin_app (tanpa passw
 node scripts/set-app-role-password.mjs   # setel password acak, perbarui .env
 ```
 
-Untuk produksi: jalankan migrasi dengan `MIGRATION_URL` branch production, lalu
-`node scripts/set-app-role-password.mjs --print` (dengan `.env` yang menunjuk ke branch production)
-dan masukkan hasilnya ke `wrangler secret put POSTGRES_URL`. Password hanya tampil di terminal Anda.
+### Produksi
+
+Urutan penting: **kode baru harus ter-deploy sebelum secret diganti ke `lapakin_app`.** Kode lama menulis `activity_logs` tanpa konteks tenant, dan RLS akan menolaknya (login produksi gagal).
+
+Di satu jendela Git Bash (URL tidak masuk riwayat perintah):
+
+```bash
+read -rs -p "Owner URL production (direct, tanpa pooling): " PROD_OWNER_URL; echo
+
+# 1. Migrasi ke production sebagai pemilik: membuat role lapakin_app, policy, kolom audit
+MIGRATION_URL="$PROD_OWNER_URL" pnpm db:migrate
+
+# 2. Deploy kode baru (secret POSTGRES_URL masih URL pemilik, jadi login tetap jalan)
+pnpm run cf:deploy
+
+# 3. Setel password lapakin_app di production dan langsung kirim ke secret Worker.
+#    URL tidak ditampilkan; hanya mengalir lewat pipe ke wrangler.
+MIGRATION_URL="$PROD_OWNER_URL" node scripts/set-app-role-password.mjs --print | pnpm exec wrangler secret put POSTGRES_URL
+
+unset PROD_OWNER_URL
+```
+
+Skrip dengan `MIGRATION_URL` dari variabel lingkungan hanya mau berjalan dengan `--print`, sehingga `.env` dev tidak tertimpa.
+
+Verifikasi: masuk ke situs produksi, buka halaman Activity (harus menampilkan entri dan login baru tercatat). Untuk membuktikan isolasi di produksi tanpa menyentuh datanya, buat branch Neon turunan dari `production`, setel password `lapakin_app` di sana dengan skrip di atas, lalu jalankan `pnpm test` dengan `MIGRATION_URL` dan `POSTGRES_URL` branch itu, dan hapus branchnya.
+
+Rollback: `wrangler secret put POSTGRES_URL` dengan URL pemilik mengembalikan perilaku sebelumnya (RLS tidak berlaku, tapi aplikasi tetap jalan).
 
 ## withTenant
 
