@@ -9,4 +9,6 @@ export const contactAuditLabels: ActivityLabels = {
   CONTACT_ARCHIVED: (m) => `You archived contact${named(m)}`,
   CONTACT_RESTORED: (m) => `You restored contact${named(m)}`,
   CONTACT_TAG_CREATED: (m) => `You added the tag${named(m)}`,
+  CONTACT_TAG_UPDATED: (m) => `You updated the tag${named(m)}`,
+  CONTACT_TAG_DELETED: (m) => `You deleted the tag${named(m)}`,
 };

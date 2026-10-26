@@ -11,8 +11,10 @@ import {
   archiveContact,
   createContact,
   createTag,
+  deleteTag,
   restoreContact,
   updateContact,
+  updateTag,
 } from './service';
 
 // Form kontak membaca FormData sendiri (parseContactForm), karena tagIds berulang dan
@@ -87,8 +89,17 @@ export const restoreContactAction = validatedActionWithTenant(anyForm, 'contact:
   return { success: 'Contact restored' };
 });
 
+// Warna dikirim sebagai string heksadesimal; kosong berarti tanpa warna.
+const tagFields = (formData: FormData) => {
+  const color = formData.get('color');
+  return tagInputSchema.safeParse({
+    name: formData.get('name') ?? '',
+    color: typeof color === 'string' && color ? color : null,
+  });
+};
+
 export const createTagAction = validatedActionWithTenant(anyForm, null, async (_d, formData, ctx) => {
-  const parsed = tagInputSchema.safeParse({ name: formData.get('name') ?? '' });
+  const parsed = tagFields(formData);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid input' };
   try {
     await createTag({ teamId: ctx.teamId, userId: ctx.user.id }, parsed.data);
@@ -97,4 +108,30 @@ export const createTagAction = validatedActionWithTenant(anyForm, null, async (_
   }
   refresh();
   return { success: 'Tag added' };
+});
+
+export const updateTagAction = validatedActionWithTenant(anyForm, 'contact:tag-manage', async (_d, formData, ctx) => {
+  const id = idOf(formData);
+  if (!id) return { error: 'Tag not found' };
+  const parsed = tagFields(formData);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid input' };
+  try {
+    await updateTag({ teamId: ctx.teamId, userId: ctx.user.id }, id, parsed.data);
+  } catch (e) {
+    return failure(e);
+  }
+  refresh();
+  return { success: 'Tag saved' };
+});
+
+export const deleteTagAction = validatedActionWithTenant(anyForm, 'contact:tag-manage', async (_d, formData, ctx) => {
+  const id = idOf(formData);
+  if (!id) return { error: 'Tag not found' };
+  try {
+    await deleteTag({ teamId: ctx.teamId, userId: ctx.user.id }, id);
+  } catch (e) {
+    return failure(e);
+  }
+  refresh();
+  return { success: 'Tag deleted' };
 });

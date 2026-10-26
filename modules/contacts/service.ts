@@ -4,7 +4,7 @@ import type { BatchItem } from 'drizzle-orm/batch';
 import { db } from '@/lib/db/drizzle';
 import { withTenant } from '@/lib/db/tenant';
 import { auditEntry } from '@/lib/audit';
-import { contacts, contactTags, contactTagLinks, type Contact } from './schema';
+import { contacts, contactTags, contactTagLinks, type Contact, type ContactTag } from './schema';
 import type { ContactInput, ListQuery, TagInput } from './schemas';
 
 // Layanan kontak. Semua fungsi menerima toko aktif dari getTenantContext(); semua query
@@ -20,6 +20,7 @@ export type ContactErrorCode =
   | 'invalid_company'
   | 'company_has_people'
   | 'invalid_tag'
+  | 'tag_not_found'
   | 'tag_exists';
 
 const DEFAULT_MESSAGES: Record<ContactErrorCode, string> = {
@@ -28,6 +29,7 @@ const DEFAULT_MESSAGES: Record<ContactErrorCode, string> = {
   invalid_company: 'Company not found',
   company_has_people: 'This company still has people linked to it',
   invalid_tag: 'Tag not found',
+  tag_not_found: 'Tag not found',
   tag_exists: 'A tag with this name already exists',
 };
 
@@ -358,4 +360,64 @@ export async function createTag(actor: Actor, input: TagInput) {
     if (sqlState(e) === '23505') throw new ContactError('tag_exists', 'A tag with this name already exists');
     throw e;
   }
+}
+
+async function findTag(teamId: number, id: number): Promise<ContactTag | null> {
+  const [rows] = await withTenant(teamId, [
+    db
+      .select()
+      .from(contactTags)
+      .where(and(eq(contactTags.id, id), eq(contactTags.teamId, teamId)))
+      .limit(1),
+  ]);
+  return rows[0] ?? null;
+}
+
+export async function updateTag(actor: Actor, id: number, input: TagInput): Promise<ContactTag> {
+  const { teamId, userId } = actor;
+  const existing = await findTag(teamId, id);
+  if (!existing) throw new ContactError('tag_not_found');
+
+  try {
+    const results = await withTenant(teamId, [
+      db
+        .update(contactTags)
+        .set({ name: input.name, color: input.color })
+        .where(and(eq(contactTags.id, id), eq(contactTags.teamId, teamId)))
+        .returning(),
+      auditEntry(teamId, userId, 'CONTACT_TAG_UPDATED', {
+        entityType: 'contact_tag',
+        entityId: id,
+        metadata: { name: input.name, previousName: existing.name },
+      }),
+    ]);
+    return (results[0] as ContactTag[])[0];
+  } catch (e) {
+    if (sqlState(e) === '23505') throw new ContactError('tag_exists');
+    throw e;
+  }
+}
+
+// Menghapus tag melepasnya dari semua kontak (kunci asing cascade); kontaknya tetap ada.
+export async function deleteTag(actor: Actor, id: number): Promise<{ removedFrom: number }> {
+  const { teamId, userId } = actor;
+  const existing = await findTag(teamId, id);
+  if (!existing) throw new ContactError('tag_not_found');
+
+  const [[usage]] = await withTenant(teamId, [
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(contactTagLinks)
+      .where(and(eq(contactTagLinks.tagId, id), eq(contactTagLinks.teamId, teamId))),
+  ]);
+
+  await withTenant(teamId, [
+    db.delete(contactTags).where(and(eq(contactTags.id, id), eq(contactTags.teamId, teamId))),
+    auditEntry(teamId, userId, 'CONTACT_TAG_DELETED', {
+      entityType: 'contact_tag',
+      entityId: id,
+      metadata: { name: existing.name, contactCount: usage.n },
+    }),
+  ]);
+  return { removedFrom: usage.n };
 }
