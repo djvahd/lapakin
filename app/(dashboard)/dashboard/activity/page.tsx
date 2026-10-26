@@ -12,7 +12,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { ActivityType } from '@/lib/db/schema';
-import { getActivityLogs } from '@/lib/db/queries';
+import { getActivityLogs, getUser } from '@/lib/db/queries';
 
 const iconMap: Record<ActivityType, LucideIcon> = {
   [ActivityType.SIGN_UP]: UserPlus,
@@ -22,6 +22,7 @@ const iconMap: Record<ActivityType, LucideIcon> = {
   [ActivityType.DELETE_ACCOUNT]: UserMinus,
   [ActivityType.UPDATE_ACCOUNT]: Settings,
   [ActivityType.CREATE_TEAM]: UserPlus,
+  [ActivityType.UPDATE_TEAM]: Settings,
   [ActivityType.REMOVE_TEAM_MEMBER]: UserMinus,
   [ActivityType.INVITE_TEAM_MEMBER]: Mail,
   [ActivityType.ACCEPT_INVITATION]: CheckCircle,
@@ -57,6 +58,8 @@ function formatAction(action: ActivityType): string {
       return 'You updated your account';
     case ActivityType.CREATE_TEAM:
       return 'You created a new team';
+    case ActivityType.UPDATE_TEAM:
+      return 'You renamed the store';
     case ActivityType.REMOVE_TEAM_MEMBER:
       return 'You removed a team member';
     case ActivityType.INVITE_TEAM_MEMBER:
@@ -68,8 +71,19 @@ function formatAction(action: ActivityType): string {
   }
 }
 
+// Log milik toko, jadi pelakunya bisa anggota lain: "You ..." hanya untuk pengguna ini.
+function describe(
+  action: ActivityType,
+  actor: { isMe: boolean; name: string }
+): string {
+  const text = formatAction(action);
+  return actor.isMe
+    ? text
+    : text.replace(/^You/, actor.name).replace(' your ', ' their ');
+}
+
 export default async function ActivityPage() {
-  const logs = await getActivityLogs();
+  const [logs, me] = await Promise.all([getActivityLogs(), getUser()]);
 
   return (
     <section className="flex-1 p-4 lg:p-8">
@@ -85,9 +99,10 @@ export default async function ActivityPage() {
             <ul className="space-y-4">
               {logs.map((log) => {
                 const Icon = iconMap[log.action as ActivityType] || Settings;
-                const formattedAction = formatAction(
-                  log.action as ActivityType
-                );
+                const formattedAction = describe(log.action as ActivityType, {
+                  isMe: log.userId === me?.id,
+                  name: log.userName || log.userEmail || 'Someone'
+                });
 
                 return (
                   <li key={log.id} className="flex items-center space-x-4">
