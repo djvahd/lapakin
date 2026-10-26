@@ -14,13 +14,13 @@ import { validatedActionWithTenant } from '@/lib/auth/middleware';
 
 describe('can()', () => {
   it('owner boleh semua izin yang ada', () => {
-    for (const p of ['team:update', 'member:invite', 'member:remove', 'billing:manage', 'contact:archive', 'contact:tag-manage'] as const) {
+    for (const p of ['team:update', 'member:invite', 'member:remove', 'billing:manage', 'contact:archive', 'contact:tag-manage', 'crm:archive', 'crm:stage-manage'] as const) {
       expect(can('owner', p)).toBe(true);
     }
   });
 
   it('member tidak boleh mengubah toko, mengundang, menghapus anggota, atau billing', () => {
-    for (const p of ['team:update', 'member:invite', 'member:remove', 'billing:manage', 'contact:archive', 'contact:tag-manage'] as const) {
+    for (const p of ['team:update', 'member:invite', 'member:remove', 'billing:manage', 'contact:archive', 'contact:tag-manage', 'crm:archive', 'crm:stage-manage'] as const) {
       expect(can('member', p)).toBe(false);
     }
   });

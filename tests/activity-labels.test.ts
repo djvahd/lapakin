@@ -12,6 +12,20 @@ describe('moduleActivityText', () => {
     expect(moduleActivityText('CONTACT_TAG_DELETED', { name: 'VIP' })).toBe('You deleted the tag "VIP"');
   });
 
+  it('menulis aksi CRM dengan judul peluang, tahap tujuan, dan ringkasan tindak lanjut', () => {
+    expect(moduleActivityText('CRM_OPPORTUNITY_CREATED', { title: 'Proyek A' })).toBe('You added opportunity "Proyek A"');
+    expect(moduleActivityText('CRM_OPPORTUNITY_UPDATED', { title: 'Proyek A' })).toBe('You updated opportunity "Proyek A"');
+    expect(moduleActivityText('CRM_OPPORTUNITY_MOVED', { title: 'Proyek A', toStage: 'Won' })).toBe(
+      'You moved opportunity "Proyek A" to Won'
+    );
+    expect(moduleActivityText('CRM_OPPORTUNITY_MOVED', { title: 'Proyek A' })).toBe('You moved opportunity "Proyek A"');
+    expect(moduleActivityText('CRM_OPPORTUNITY_ARCHIVED', { title: 'Proyek A' })).toBe('You archived opportunity "Proyek A"');
+    expect(moduleActivityText('CRM_OPPORTUNITY_RESTORED', { title: 'Proyek A' })).toBe('You restored opportunity "Proyek A"');
+    expect(moduleActivityText('CRM_ACTIVITY_CREATED', { summary: 'Telepon' })).toBe('You scheduled a follow-up "Telepon"');
+    expect(moduleActivityText('CRM_ACTIVITY_DONE', { summary: 'Telepon' })).toBe('You completed a follow-up "Telepon"');
+    expect(moduleActivityText('CRM_ACTIVITY_REOPENED', null)).toBe('You reopened a follow-up');
+  });
+
   it('tetap menghasilkan teks bila metadata kosong atau bentuknya salah', () => {
     expect(moduleActivityText('CONTACT_CREATED', null)).toBe('You added contact');
     expect(moduleActivityText('CONTACT_CREATED', undefined)).toBe('You added contact');
