@@ -22,12 +22,21 @@ export type ContactErrorCode =
   | 'invalid_tag'
   | 'tag_exists';
 
+const DEFAULT_MESSAGES: Record<ContactErrorCode, string> = {
+  not_found: 'Contact not found',
+  archived: 'Restore the contact before editing',
+  invalid_company: 'Company not found',
+  company_has_people: 'This company still has people linked to it',
+  invalid_tag: 'Tag not found',
+  tag_exists: 'A tag with this name already exists',
+};
+
 export class ContactError extends Error {
   constructor(
     public code: ContactErrorCode,
     message?: string
   ) {
-    super(message ?? code);
+    super(message ?? DEFAULT_MESSAGES[code]);
     this.name = 'ContactError';
   }
 }

@@ -121,3 +121,5 @@ modules/<nama>/
 - Aksi tulis dan entri audit dimasukkan ke batch `withTenant` yang sama (`auditEntry()`), jadi atomik.
 - Data yang akan dirujuk modul lain diarsipkan (`archived_at`), bukan dihapus.
 - `drizzle.config.ts` memuat `modules/*/schema.ts` secara otomatis.
+- Teks audit log modul didaftarkan di `modules/<nama>/audit-labels.ts` dan digabung di `lib/activity-labels.ts`; tanpa itu halaman Activity menampilkan "Unknown action occurred".
+- UI modul: halaman server di `app/(dashboard)/dashboard/<nama>/` yang membaca lewat `service.ts`; form di `modules/<nama>/ui/` memakai `useActionState` dengan Server Actions; izin UI memakai `can()` hanya untuk tampilan.
