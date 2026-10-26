@@ -105,3 +105,19 @@ export const renameStore = validatedActionWithTenant(schema, 'team:update', asyn
 ```
 
 Pengecekan izin dilakukan di server di `validatedActionWithTenant`. Menonaktifkan tombol di UI hanya untuk tampilan.
+
+## Pola modul (acuan: modules/contacts)
+
+```
+modules/<nama>/
+  schema.ts    tabel Drizzle; impor RELATIF (drizzle-kit tidak memahami '@/'); tenantIsolation()
+  schemas.ts   skema Zod untuk input; teks kosong menjadi null
+  service.ts   fungsi bisnis: terima Actor { teamId, userId }, filter team_id eksplisit, lewat withTenant
+  actions.ts   Server Actions: validatedActionWithTenant(schema, permission, ...)  (mulai PR UI)
+```
+
+- Setiap tabel tenant: kolom `team_id`, `tenantIsolation()`, dan `unique(id, team_id)` bila tabel lain merujuknya.
+- Referensi antar tabel tenant memakai kunci asing komposit `(id, team_id)` sehingga database menolak rujukan lintas toko.
+- Aksi tulis dan entri audit dimasukkan ke batch `withTenant` yang sama (`auditEntry()`), jadi atomik.
+- Data yang akan dirujuk modul lain diarsipkan (`archived_at`), bukan dihapus.
+- `drizzle.config.ts` memuat `modules/*/schema.ts` secara otomatis.
