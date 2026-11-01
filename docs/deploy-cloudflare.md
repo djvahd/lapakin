@@ -96,3 +96,10 @@ Tabel baru otomatis dapat hak untuk `lapakin_app` lewat default privileges (migr
 - `0005_inventory.sql` membuat `inv_products`, `inv_variants`, `inv_stock_movements` dan mencabut `UPDATE`/`DELETE` pada `inv_stock_movements` dari `lapakin_app` (buku besar stok hanya bertambah). Pencabutan ada di akhir berkas, jadi berlaku setelah default privileges memberi hak ke tabel baru.
 - Setelah deploy, uji di produksi: buka Inventory, buat produk uji, terima stok, coba keluarkan lebih dari stok (harus ditolak dengan pesan "Not enough stock"), lalu arsipkan produknya (hak arsip hanya owner).
 - Mutasi stok tidak bisa dihapus atau diubah, jadi data uji hanya bisa diarsipkan, bukan dihapus.
+
+### Catatan rilis modul Sales (migrasi 0006)
+
+- `0006_sales.sql` membuat `sales_orders`, `sales_lines`, `sales_deliveries`, `sales_delivery_lines` (RLS, kunci asing komposit ke kontak, peluang CRM, dan varian Inventory). Tidak ada pencabutan hak; hak DML datang dari default privileges (migrasi 0002).
+- Setelah deploy, uji di produksi: buat penawaran dari halaman peluang CRM (tombol "+ New quotation"), konfirmasi, catat pengiriman sebagian (stok varian harus berkurang di Inventory), lalu coba kirim lebih dari sisa (harus ditolak).
+- Pengiriman memakai mutasi stok jenis `sale` yang tidak bisa dihapus. Pesanan yang sudah punya pengiriman tidak bisa dibatalkan, jadi data uji dengan pengiriman tetap tersimpan; gunakan produk uji yang bisa diarsipkan.
+- Pajak (PPN) belum ada di Sales; ditangani di modul Invoicing.

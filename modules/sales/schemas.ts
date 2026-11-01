@@ -66,6 +66,7 @@ export type OrderInput = z.output<typeof orderInputSchema>;
 export const listQuerySchema = z.object({
   status: z.enum(ORDER_STATUSES).optional(),
   contactId: id.optional(),
+  opportunityId: id.optional(),
   page: z.number().int().min(1).default(1),
   pageSize: z.number().int().min(1).max(100).default(20),
 });

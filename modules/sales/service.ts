@@ -385,7 +385,8 @@ export async function listOrders(teamId: number, query: ListQuery) {
   const where = and(
     eq(salesOrders.teamId, teamId),
     query.status ? eq(salesOrders.status, query.status) : undefined,
-    query.contactId ? eq(salesOrders.contactId, query.contactId) : undefined
+    query.contactId ? eq(salesOrders.contactId, query.contactId) : undefined,
+    query.opportunityId ? eq(salesOrders.opportunityId, query.opportunityId) : undefined
   );
   const [rows, totals] = await withTenant(teamId, [
     db
