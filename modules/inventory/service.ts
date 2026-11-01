@@ -633,3 +633,24 @@ export async function listMovements(teamId: number, query: MovementQuery) {
 
   return { items, total, page: query.page, pageSize: query.pageSize, pageCount: Math.max(1, Math.ceil(total / query.pageSize)) };
 }
+
+export type SaleOption = { variantId: number; label: string; unit: string; price: number };
+
+// Fungsi publik untuk modul lain (Sales): varian aktif yang bisa dijual, dengan harga jual efektif.
+export async function listSaleOptions(teamId: number, limit = 500): Promise<SaleOption[]> {
+  const [rows] = await withTenant(teamId, [
+    db
+      .select({ variant: invVariants, product: invProducts })
+      .from(invVariants)
+      .innerJoin(invProducts, and(eq(invVariants.productId, invProducts.id), eq(invProducts.teamId, invVariants.teamId)))
+      .where(and(eq(invVariants.teamId, teamId), isNull(invVariants.archivedAt), isNull(invProducts.archivedAt)))
+      .orderBy(asc(invProducts.name), asc(invVariants.id))
+      .limit(limit),
+  ]);
+  return rows.map(({ variant, product }) => ({
+    variantId: variant.id,
+    label: variant.name ? `${product.name} (${variant.name})` : product.name,
+    unit: product.unit,
+    price: variant.salePrice ?? product.salePrice,
+  }));
+}
