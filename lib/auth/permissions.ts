@@ -14,7 +14,9 @@ const permissions = {
   'crm:stage-manage': ['owner'],
   // Menerima dan mengeluarkan stok terbuka untuk semua anggota; koreksi hasil hitung dan arsip hanya owner.
   'inventory:adjust': ['owner'],
-  'inventory:archive': ['owner']
+  'inventory:archive': ['owner'],
+  // Membuat, mengirim, dan mengonfirmasi penawaran terbuka untuk semua anggota; membatalkan pesanan terkonfirmasi hanya owner.
+  'sales:cancel': ['owner']
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Permission = keyof typeof permissions;

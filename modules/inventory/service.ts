@@ -91,12 +91,12 @@ export async function getStockLevels(teamId: number, variantIds: number[]): Prom
   return map;
 }
 
-type VariantContext = {
+export type VariantContext = {
   variant: InvVariant;
   product: InvProduct;
 };
 
-async function findVariant(teamId: number, variantId: number): Promise<VariantContext | null> {
+export async function findVariant(teamId: number, variantId: number): Promise<VariantContext | null> {
   const [rows] = await withTenant(teamId, [
     db
       .select({ variant: invVariants, product: invProducts })
