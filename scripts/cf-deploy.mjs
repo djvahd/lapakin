@@ -19,8 +19,6 @@ try {
   run([cli, 'build'], {
     POSTGRES_URL: 'postgresql://build:build@localhost/build',
     AUTH_SECRET: 'build-only',
-    STRIPE_SECRET_KEY: 'sk_test_build_only',
-    STRIPE_WEBHOOK_SECRET: 'whsec_build_only',
     BASE_URL: 'http://localhost'
   });
 } finally {

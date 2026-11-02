@@ -17,8 +17,7 @@ Aplikasi dijalankan di Cloudflare Workers lewat adapter [OpenNext](https://openn
    POSTGRES_URL=...
    AUTH_SECRET=...
    BASE_URL=http://127.0.0.1:8787
-   STRIPE_SECRET_KEY=sk_test_placeholder
-   STRIPE_WEBHOOK_SECRET=whsec_placeholder
+   MIDTRANS_SERVER_KEY=...        # opsional untuk uji lokal; kunci sandbox
    ```
 
 2. Jalankan:
@@ -42,8 +41,7 @@ pnpm exec wrangler login
 pnpm exec wrangler secret put POSTGRES_URL
 pnpm exec wrangler secret put AUTH_SECRET     # buat yang baru: openssl rand -base64 32
 pnpm exec wrangler secret put BASE_URL        # isi setelah tahu URL workers.dev
-pnpm exec wrangler secret put STRIPE_SECRET_KEY      # placeholder sampai Issue #12
-pnpm exec wrangler secret put STRIPE_WEBHOOK_SECRET  # placeholder sampai Issue #12
+pnpm exec wrangler secret put MIDTRANS_SERVER_KEY   # kunci sandbox dulu; produksi setelah akun disetujui
 
 # 3. Build dan deploy
 pnpm run cf:deploy
@@ -59,7 +57,7 @@ Gunakan `pnpm run cf:deploy`, bukan `pnpm deploy`: `deploy` adalah perintah bawa
 - **Middleware:** dijalankan sebagai Edge (tanpa `runtime: 'nodejs'`), karena Node middleware belum didukung penuh adapter.
 - **Windows:** adapter membuat symlink bertipe file yang tidak bisa dibaca esbuild. `pnpm-workspace.yaml` memakai `nodeLinker: hoisted` agar tidak ada symlink pnpm, dan `verifyDepsBeforeRun: false` agar pnpm tidak memicu `install` ulang saat menjalankan skrip. Di Linux atau macOS keduanya bisa dilepas.
 - **Next.js 16:** `experimental.ppr` dan `clientSegmentCache` dihapus karena tidak ada lagi di Next 16.
-- **`/pricing`:** dirender saat request karena memanggil Stripe. Diganti di Issue #12.
+- **`/pricing`:** dirender saat request karena membaca sesi dan status langganan.
 
 ## Checklist rilis (kode yang membawa migrasi)
 
@@ -121,3 +119,12 @@ Tabel baru otomatis dapat hak untuk `lapakin_app` lewat default privileges (migr
 - Setelah deploy, uji: buat aturan di Automation untuk "Invoice is overdue", pastikan ada faktur terbit yang lewat tempo, lalu picu cron dari dasbor Cloudflare (Workers, lapakin, Triggers) atau tunggu jadwalnya; cek Notifications dan riwayat eksekusi aturan. Panggilan manual: `curl -X POST -H "Authorization: Bearer <CRON_SECRET>" https://<url>/api/cron/automation`.
 - Pengingat diulang paling cepat seminggu sekali per faktur dan per aturan. Pemindaian harian menelusuri semua toko; toko tanpa aturan aktif hanya memakan satu query.
 - Hanya notifikasi di dalam aplikasi. Email dan WhatsApp belum ada (tambahkan sebagai aksi baru di `modules/automation/handlers.ts`).
+
+### Catatan rilis pembayaran Midtrans (migrasi 0009)
+
+- `0009_midtrans_subscriptions.sql` hanya menambah: tabel `sub_payments` (RLS) dan kolom `teams.plan_expires_at`. Kolom `stripe_*` dibiarkan agar rollback kode lama aman; hapus lewat migrasi tersendiri nanti. Dependensi `stripe` dan rute `/api/stripe/*` sudah dihapus.
+- Model: bayar per periode lewat Midtrans Snap (QRIS, virtual account, e-wallet, kartu), tanpa tagihan otomatis. Satu pembayaran memperpanjang `plan_expires_at` satu bulan atau satu tahun, menyambung dari tanggal berakhir bila paket masih aktif. Harga ada di `lib/payments/plans.ts` (Pro: Rp99.000/bulan, Rp990.000/tahun).
+- **Wajib sebelum dipakai:** `pnpm exec wrangler secret put MIDTRANS_SERVER_KEY` (kunci **sandbox** dulu). Untuk produksi pasang kunci produksi dan `pnpm exec wrangler secret put MIDTRANS_IS_PRODUCTION` dengan nilai `true`. Tanpa kunci, tombol bayar menampilkan "Midtrans is not configured" dan bagian lain tetap berjalan.
+- **Notification URL di dasbor Midtrans** (Settings, Configuration, Payment Notification URL): `https://<url>/api/midtrans/webhook`. Sandbox dan produksi punya pengaturan terpisah. Endpoint memverifikasi tanda tangan SHA512 dengan server key, mencocokkan jumlah, dan idempoten (kiriman ulang tidak memperpanjang dua kali).
+- Uji sandbox: buka `/pricing` sebagai owner, pilih bulanan, bayar dengan metode uji di simulator Midtrans, lalu cek kartu Team Subscription di dashboard (Pro, aktif sampai tanggal baru) dan riwayat Activity. Cek juga Midtrans dashboard, Transactions, bahwa notifikasi terkirim dengan status 200.
+- Belum ada: pembatasan fitur per paket (Free dan Pro saat ini sama), pengingat perpanjangan otomatis (bisa dibuat dengan peristiwa baru di mesin otomasi), refund/chargeback (diabaikan webhook, ditangani manual), dan uji ke sandbox sungguhan (butuh server key sandbox).

@@ -85,11 +85,11 @@ export default function HomePage() {
               </div>
               <div className="mt-5">
                 <h2 className="text-lg font-medium text-gray-900">
-                  Stripe Integration
+                  Payments via Midtrans
                 </h2>
                 <p className="mt-2 text-base text-gray-500">
-                  Seamless payment processing and subscription management with
-                  industry-leading Stripe integration.
+                  Pay for your subscription with QRIS, bank transfer, e-wallets,
+                  or cards through Midtrans.
                 </p>
               </div>
             </div>

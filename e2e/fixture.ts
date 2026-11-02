@@ -32,6 +32,7 @@ export const TEAM_TABLES = [
   'crm_activities',
   'crm_opportunities',
   'crm_stages',
+  'sub_payments',
   'auto_notifications',
   'auto_runs',
   'auto_rules',

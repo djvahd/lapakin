@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -9,7 +10,6 @@ import {
   CardTitle,
   CardFooter
 } from '@/components/ui/card';
-import { customerPortalAction } from '@/lib/payments/actions';
 import { useActionState, useEffect } from 'react';
 import { TeamDataWithMembers, User } from '@/lib/db/schema';
 import {
@@ -106,6 +106,9 @@ function SubscriptionSkeleton() {
 
 function ManageSubscription() {
   const { data: teamData } = useSWR<TeamDataWithMembers>('/api/team', fetcher);
+  // Paket berbayar aktif selama tanggal berakhirnya belum lewat (lihat lib/payments/subscription.ts).
+  const expires = teamData?.planExpiresAt ? new Date(teamData.planExpiresAt) : null;
+  const active = Boolean(expires && expires > new Date());
 
   return (
     <Card className="mb-8">
@@ -117,21 +120,21 @@ function ManageSubscription() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
             <div className="mb-4 sm:mb-0">
               <p className="font-medium">
-                Current Plan: {teamData?.planName || 'Free'}
+                Current Plan: {active ? 'Pro' : 'Free'}
               </p>
               <p className="text-sm text-muted-foreground">
-                {teamData?.subscriptionStatus === 'active'
-                  ? 'Billed monthly'
-                  : teamData?.subscriptionStatus === 'trialing'
-                  ? 'Trial period'
+                {active && expires
+                  ? `Active until ${expires.toLocaleDateString('id-ID', { dateStyle: 'long' })}`
+                  : expires
+                  ? `Expired on ${expires.toLocaleDateString('id-ID', { dateStyle: 'long' })}`
                   : 'No active subscription'}
               </p>
             </div>
-            <form action={customerPortalAction}>
-              <Button type="submit" variant="outline">
-                Manage Subscription
+            <Link href="/pricing">
+              <Button type="button" variant="outline">
+                {active ? 'Renew' : 'Upgrade'}
               </Button>
-            </form>
+            </Link>
           </div>
         </div>
       </CardContent>
