@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Tes memakai satu database (branch Neon khusus CI) dan menulis data uji ke dalamnya,
+# jadi run tidak boleh berjalan bersamaan.
+concurrency:
+  group: ci-database
+  cancel-in-progress: false
+
+env:
+  MIGRATION_URL: ${{ secrets.CI_MIGRATION_URL }}
+  POSTGRES_URL: ${{ secrets.CI_POSTGRES_URL }}
+  AUTH_SECRET: ${{ secrets.CI_AUTH_SECRET }}
+  BASE_URL: http://localhost:3100
+
+jobs:
+  test:
+    # PR dari fork tidak menerima secret, jadi dilewati (tes membutuhkan database).
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check secrets
+        run: |
+          for v in MIGRATION_URL POSTGRES_URL AUTH_SECRET; do
+            if [ -z "${!v}" ]; then echo "::error::Secret CI_$v belum diisi (lihat docs/ci.md)"; exit 1; fi
+          done
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm exec tsc --noEmit
+      - name: Apply migrations to the CI database
+        run: pnpm db:migrate
+      - name: Unit and integration tests
+        run: pnpm test
+
+  e2e:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: End-to-end tests
+        run: pnpm test:e2e
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7

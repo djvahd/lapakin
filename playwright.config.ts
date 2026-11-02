@@ -10,7 +10,9 @@ export default defineConfig({
   // Satu toko uji dipakai bersama, jadi tes berjalan berurutan.
   fullyParallel: false,
   workers: 1,
-  retries: 0,
+  // Di CI satu ulangan menyerap kegagalan koneksi sesaat ke database; lokal tanpa ulangan agar kegagalan terlihat.
+  retries: process.env.CI ? 1 : 0,
+  forbidOnly: Boolean(process.env.CI),
   timeout: 60_000,
   reporter: [['list']],
   globalSetup: './e2e/global-setup.ts',
