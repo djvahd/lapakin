@@ -17,3 +17,7 @@ export const EVENT_NAMES = Object.keys(EVENTS) as [EventName, ...EventName[]];
 // Dua kunci khusus di luar daftar bidang: `dedupeKey` (aturan yang sama tidak berjalan dua kali untuk
 // kunci yang sama) dan `userId` (penerima untuk aksi dengan recipient "payload_user").
 export type EventPayload = Record<string, unknown> & { dedupeKey?: string; userId?: number };
+
+// Bentuk datar untuk form (komponen klien tidak mengimpor registry langsung).
+export const eventOptions = () =>
+  Object.entries(EVENTS).map(([name, e]) => ({ name, label: e.label, fields: [...e.fields] }));
