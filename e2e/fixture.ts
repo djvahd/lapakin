@@ -6,7 +6,16 @@ import path from 'node:path';
 // bergantung pada UI untuk menyiapkan akun, kontak, dan stok.
 export const STATE_FILE = path.join(__dirname, '.state.json');
 
-export type E2eState = { userId: number; teamId: number; email: string; password: string; variantId: number };
+export type E2eState = {
+  userId: number;
+  teamId: number;
+  email: string;
+  password: string;
+  variantId: number;
+  // Anggota biasa (role member) di toko yang sama, untuk menguji pembatasan izin.
+  memberId: number;
+  memberEmail: string;
+};
 
 export const ownerSql = () => {
   const url = process.env.MIGRATION_URL;
