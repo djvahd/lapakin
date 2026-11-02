@@ -33,6 +33,8 @@ Prasyarat: Node 24, pnpm 11, dan sebuah branch Neon untuk pengembangan.
 3. `pnpm db:migrate`, lalu `pnpm db:seed` (membuat `test@test.com` / `admin123`, hanya untuk pengembangan).
 4. `pnpm dev`, buka http://localhost:3000.
 
+Data contoh yang kaya untuk demo: `pnpm db:seed:demo` (lihat [docs/demo.md](docs/demo.md)).
+
 ## Tes
 
 - `pnpm test`: Vitest (logika bisnis dan integrasi ke database sungguhan; butuh `MIGRATION_URL` dan `POSTGRES_URL`).
