@@ -10,6 +10,11 @@ Next.js (App Router), TypeScript, PostgreSQL (Neon), Drizzle ORM, shadcn/ui, Tai
 
 Fondasi: fork dari [nextjs/saas-starter](https://github.com/nextjs/saas-starter) (MIT).
 
+## Tes
+
+- `pnpm test`: Vitest (logika bisnis dan integrasi database, butuh `MIGRATION_URL` dan `POSTGRES_URL` di `.env`).
+- `pnpm test:e2e`: Playwright, alur utama di peramban terhadap dev server lokal (port 3100) dan database dev. Tes membuat toko uji sendiri dan menghapusnya sesudahnya. Pertama kali: `pnpm exec playwright install chromium`. Tanpa mengunduh Chromium, pakai peramban terpasang: `E2E_CHANNEL=msedge pnpm test:e2e` (atau `chrome`).
+
 ## Lisensi
 
 [AGPL-3.0](LICENSE). Pihak lain boleh memakai dan memodifikasi, tetapi bila menawarkannya sebagai layanan online, kode ubahannya wajib dibuka.
