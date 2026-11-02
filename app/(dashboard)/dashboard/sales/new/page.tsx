@@ -6,11 +6,21 @@ import { listQuerySchema as contactsQuery } from '@/modules/contacts/schemas';
 import { listContacts } from '@/modules/contacts/service';
 import { listSaleOptions } from '@/modules/inventory/service';
 import { createOrderAction } from '@/modules/sales/actions';
+import { getOpportunity } from '@/modules/crm/service';
 import { OrderForm } from '@/modules/sales/ui/order-form';
 
-export default async function NewQuotationPage() {
+export default async function NewQuotationPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const ctx = await getTenantContext();
   if (!ctx) redirect('/sign-in');
+
+  // Dari peluang CRM: kontak dan tautan peluang diisi otomatis; peluang tak dikenal diabaikan.
+  const raw = (await searchParams).opportunity;
+  const oppId = Number(Array.isArray(raw) ? raw[0] : raw);
+  const opportunity = Number.isInteger(oppId) && oppId > 0 ? await getOpportunity(ctx.teamId, oppId) : null;
 
   const [contacts, options] = await Promise.all([
     listContacts(ctx.teamId, contactsQuery.parse({ pageSize: 100 })),
@@ -31,7 +41,11 @@ export default async function NewQuotationPage() {
             submitLabel="Create quotation"
             contacts={contacts.items.map((c) => ({ id: c.id, name: c.name }))}
             options={options}
-            preset={{ today: new Date().toISOString().slice(0, 10) }}
+            preset={{
+              today: new Date().toISOString().slice(0, 10),
+              contactId: opportunity?.contactId ?? null,
+              opportunityId: opportunity?.id ?? null,
+            }}
           />
         </CardContent>
       </Card>

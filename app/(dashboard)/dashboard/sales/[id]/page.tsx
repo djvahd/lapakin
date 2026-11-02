@@ -53,6 +53,11 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             {confirmed && canCancel && <StatusButton id={id} action={cancelOrderAction} label="Cancel order" />}
           </div>
         </div>
+        {order.opportunityId && (
+          <Link href={`/dashboard/crm/${order.opportunityId}`} className="mt-2 inline-block text-sm text-orange-600">
+            View opportunity →
+          </Link>
+        )}
       </div>
 
       {editable && contacts ? (

@@ -13,6 +13,10 @@ import { ActivityPanel } from '@/modules/crm/ui/activity-panel';
 import { ArchiveButton } from '@/modules/crm/ui/archive-button';
 import { MoveSelect } from '@/modules/crm/ui/move-select';
 import { OpportunityForm } from '@/modules/crm/ui/opportunity-form';
+import { formatNumber } from '@/modules/sales/audit-labels';
+import { listQuerySchema as salesQuery } from '@/modules/sales/schemas';
+import { listOrders } from '@/modules/sales/service';
+import { StatusBadge } from '@/modules/sales/ui/status-badge';
 
 export default async function OpportunityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await getTenantContext();
@@ -28,6 +32,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
     listContacts(ctx.teamId, contactsQuery.parse({ pageSize: 100 })),
     listTeamMembers(ctx.teamId),
   ]);
+  const quotations = await listOrders(ctx.teamId, salesQuery.parse({ opportunityId: opportunity.id, pageSize: 10 }));
 
   const archived = Boolean(opportunity.archivedAt);
   const canArchive = can(ctx.role, 'crm:archive');
@@ -97,6 +102,38 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
           </CardContent>
         </Card>
       )}
+
+      <Card className="mb-8 max-w-2xl">
+        <CardHeader>
+          <CardTitle>Quotations</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {quotations.items.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No quotations for this opportunity yet.</p>
+          ) : (
+            <ul className="divide-y text-sm">
+              {quotations.items.map((q) => (
+                <li key={q.id} className="flex items-center justify-between py-2">
+                  <Link href={`/dashboard/sales/${q.id}`} className="text-orange-600">{formatNumber(q.number)}</Link>
+                  <span className="flex items-center gap-3">
+                    {q.total.toLocaleString()} <StatusBadge status={q.status} />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {!archived && opportunity.contactId ? (
+            <Link
+              href={`/dashboard/sales/new?opportunity=${opportunity.id}`}
+              className="inline-block text-sm font-medium text-orange-600"
+            >
+              + New quotation
+            </Link>
+          ) : (
+            !archived && <p className="text-xs text-muted-foreground">Add a contact to this opportunity to create a quotation.</p>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="mb-8 max-w-2xl">
         <CardHeader>

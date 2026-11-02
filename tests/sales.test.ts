@@ -19,6 +19,8 @@ import {
   type Actor,
 } from '@/modules/sales/service';
 import { contacts } from '@/modules/contacts/schema';
+import { opportunityInputSchema } from '@/modules/crm/schemas';
+import { createOpportunity } from '@/modules/crm/service';
 import { createProduct, getProduct, getStockLevels, receiveStock } from '@/modules/inventory/service';
 import { productInputSchema, stockInputSchema } from '@/modules/inventory/schemas';
 
@@ -67,6 +69,7 @@ beforeAll(async () => {
   const b = (await owner`insert into teams (name) values (${tag + '-b'}) returning id`)[0].id as number;
   A = { teamId: a, userId: u1 };
   B = { teamId: b, userId: u1 };
+  await owner`insert into team_members (user_id, team_id, role) values (${u1}, ${a}, 'owner'), (${u1}, ${b}, 'owner')`;
   const [[ca]] = await withTenant(a, [db.insert(contacts).values({ teamId: a, kind: 'person', name: 'Budi' }).returning()]);
   const [[cb]] = await withTenant(b, [db.insert(contacts).values({ teamId: b, kind: 'person', name: 'Sari' }).returning()]);
   contactA = ca.id;
@@ -83,6 +86,10 @@ afterAll(async () => {
   await owner`delete from inv_stock_movements where team_id in (${ids[0]}, ${ids[1]})`;
   await owner`delete from inv_variants where team_id in (${ids[0]}, ${ids[1]})`;
   await owner`delete from inv_products where team_id in (${ids[0]}, ${ids[1]})`;
+  await owner`delete from crm_activities where team_id in (${ids[0]}, ${ids[1]})`;
+  await owner`delete from crm_opportunities where team_id in (${ids[0]}, ${ids[1]})`;
+  await owner`delete from crm_stages where team_id in (${ids[0]}, ${ids[1]})`;
+  await owner`delete from team_members where team_id in (${ids[0]}, ${ids[1]})`;
   await owner`delete from contacts where team_id in (${ids[0]}, ${ids[1]})`;
   await owner`delete from teams where id in (${ids[0]}, ${ids[1]})`;
   await owner`delete from users where id = ${u1}`;
@@ -169,6 +176,16 @@ describe('penawaran', () => {
     const r = await listOrders(A.teamId, listQuerySchema.parse({ status: 'rejected' }));
     expect(r.items.every((i) => i.status === 'rejected')).toBe(true);
     expect(r.items.find((i) => i.id === o.id)).toMatchObject({ total: 300, contactName: 'Budi' });
+  });
+
+  it('menautkan penawaran ke peluang CRM, menyaringnya, dan menolak peluang toko lain', async () => {
+    const opp = await createOpportunity(A, opportunityInputSchema.parse({ title: 'Proyek kopi', contactId: contactA }));
+    const oppB = await createOpportunity(B, opportunityInputSchema.parse({ title: 'Milik B', contactId: contactB }));
+    const linked = await createOrder(A, order([line()], { opportunityId: opp.id }));
+    await createOrder(A, order());
+    const r = await listOrders(A.teamId, listQuerySchema.parse({ opportunityId: opp.id }));
+    expect(r.items.map((i) => i.id)).toEqual([linked.id]);
+    await expectCode(createOrder(A, order([line()], { opportunityId: oppB.id })), 'invalid_opportunity');
   });
 });
 
