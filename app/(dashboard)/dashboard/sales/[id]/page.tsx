@@ -14,6 +14,10 @@ import {
   updateOrderAction,
 } from '@/modules/sales/actions';
 import { formatNumber } from '@/modules/sales/audit-labels';
+import { formatNumber as invoiceNumber } from '@/modules/billing/audit-labels';
+import { listQuerySchema as invoiceQuery } from '@/modules/billing/schemas';
+import { listInvoices } from '@/modules/billing/service';
+import { InvoiceBadge } from '@/modules/billing/ui/status-badge';
 import { getOrder } from '@/modules/sales/service';
 import { DeliveryPanel } from '@/modules/sales/ui/delivery-panel';
 import { OrderForm } from '@/modules/sales/ui/order-form';
@@ -32,6 +36,10 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const editable = order.status === 'draft' || order.status === 'sent';
   const confirmed = order.status === 'confirmed';
   const canCancel = can(ctx.role, 'sales:cancel') && order.deliveries.length === 0;
+
+  const invoices = confirmed
+    ? await listInvoices(ctx.teamId, invoiceQuery.parse({ orderId: id, pageSize: 20 }))
+    : null;
 
   const [contacts, options] = editable
     ? await Promise.all([listContacts(ctx.teamId, contactsQuery.parse({ pageSize: 100 })), listSaleOptions(ctx.teamId)])
@@ -111,6 +119,31 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             </ul>
             <p className="mt-3 text-right font-medium">Total: {order.total.toLocaleString()}</p>
             {order.notes && <p className="mt-3 whitespace-pre-line text-sm text-muted-foreground">{order.notes}</p>}
+          </CardContent>
+        </Card>
+      )}
+
+      {invoices && (
+        <Card className="max-w-4xl">
+          <CardHeader>
+            <CardTitle>Invoices</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {invoices.items.length > 0 && (
+              <ul className="divide-y text-sm">
+                {invoices.items.map((i) => (
+                  <li key={i.id} className="flex items-center justify-between py-2">
+                    <Link href={`/dashboard/invoices/${i.id}`} className="text-orange-600">{invoiceNumber(i.number)}</Link>
+                    <span className="flex items-center gap-3">
+                      {i.total.toLocaleString()} <InvoiceBadge status={i.status} paymentStatus={i.paymentStatus} overdue={i.overdue} />
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link href={`/dashboard/invoices/new?order=${id}`} className="inline-block text-sm font-medium text-orange-600">
+              + New invoice
+            </Link>
           </CardContent>
         </Card>
       )}
