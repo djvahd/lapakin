@@ -18,5 +18,9 @@ export default async function globalSetup() {
   const variantId = (await sql`insert into inv_variants (team_id, product_id, is_default) values (${teamId}, ${productId}, true) returning id`)[0].id as number;
   await sql`insert into inv_stock_movements (team_id, variant_id, quantity, kind, created_by) values (${teamId}, ${variantId}, 10, 'receipt', ${userId})`;
 
-  saveState({ userId, teamId, email, password, variantId });
+  const memberEmail = `${tag}-member@test.local`;
+  const memberId = (await sql`insert into users (email, password_hash, role) values (${memberEmail}, ${hash}, 'member') returning id`)[0].id as number;
+  await sql`insert into team_members (user_id, team_id, role) values (${memberId}, ${teamId}, 'member')`;
+
+  saveState({ userId, teamId, email, password, variantId, memberId, memberEmail });
 }
