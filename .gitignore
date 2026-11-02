@@ -50,3 +50,6 @@ cloudflare-env.d.ts
 /test-results/
 /playwright-report/
 /e2e/.state.json
+
+# dokumen yang dibuat skrip (PDF Midtrans)
+/docs/generated/
