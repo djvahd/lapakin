@@ -5,6 +5,10 @@ export const EVENTS = {
     label: 'Invoice is overdue',
     fields: ['invoiceId', 'number', 'contact', 'balance', 'dueDate', 'daysOverdue'],
   },
+  'subscription.expiring': {
+    label: 'Pro subscription is about to expire',
+    fields: ['plan', 'expiresOn', 'daysLeft'],
+  },
   'crm.followup_overdue': {
     label: 'CRM follow-up is overdue',
     fields: ['activityId', 'summary', 'opportunityId', 'opportunity', 'dueDate', 'daysOverdue'],

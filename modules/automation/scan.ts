@@ -3,6 +3,7 @@ import { teams } from '@/lib/db/schema';
 import { formatNumber } from '@/modules/billing/audit-labels';
 import { listQuerySchema as invoiceQuery } from '@/modules/billing/schemas';
 import { listInvoices } from '@/modules/billing/service';
+import { todayIn } from '@/modules/crm/format';
 import { listFollowUps } from '@/modules/crm/service';
 import { getSubscription } from '@/lib/payments/subscription';
 import { emit, listRules } from './service';
@@ -64,6 +65,24 @@ export async function scanOverdueFollowUps(teamId: number, today: string) {
   return out;
 }
 
+// Paket Pro yang segera berakhir. `daysLeft` dihitung dari tanggal hari ini (WIB) ke tanggal berakhir;
+// kunci dedupe memuat tanggal berakhir, jadi satu pengingat per aturan untuk tiap masa berlaku.
+export async function scanExpiringSubscription(teamId: number, today: string) {
+  const out = { emitted: 0, failed: 0 };
+  const sub = await getSubscription(teamId);
+  if (!sub.active || !sub.expiresAt) return out;
+  const expiresOn = todayIn('Asia/Jakarta', sub.expiresAt);
+  const r = await emit(teamId, 'subscription.expiring', {
+    plan: sub.plan,
+    expiresOn,
+    daysLeft: daysBetween(today, expiresOn),
+    dedupeKey: `subscription:${teamId}:${expiresOn}`,
+  });
+  out.emitted += r.ok;
+  out.failed += r.failed;
+  return out;
+}
+
 // Memindai satu toko bila punya aturan aktif untuk peristiwa terjadwal; selain itu dilewati murah.
 export async function scanTeam(teamId: number, today: string) {
   // Aturan hanya berjalan selama paket Pro aktif; setelah habis aturan tetap tersimpan tetapi diam.
@@ -73,6 +92,11 @@ export async function scanTeam(teamId: number, today: string) {
   const total = { emitted: 0, failed: 0 };
   if (wants('invoice.overdue')) {
     const r = await scanOverdueInvoices(teamId, today);
+    total.emitted += r.emitted;
+    total.failed += r.failed;
+  }
+  if (wants('subscription.expiring')) {
+    const r = await scanExpiringSubscription(teamId, today);
     total.emitted += r.emitted;
     total.failed += r.failed;
   }

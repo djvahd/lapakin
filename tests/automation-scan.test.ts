@@ -122,6 +122,45 @@ describe('pemindai tindak lanjut CRM', () => {
   });
 });
 
+describe('pemindai langganan', () => {
+  it('mengingatkan sekali per masa berlaku saat paket Pro mendekati akhir', async () => {
+    const r = await createRule(
+      A,
+      rule({
+        name: 'Perpanjang',
+        event: 'subscription.expiring',
+        conditions: [{ field: 'daysLeft', op: 'lte', value: 3 }],
+        action: 'notify',
+        actionConfig: { title: 'Paket {{plan}} berakhir {{expiresOn}} ({{daysLeft}} hari lagi)', link: '/pricing' },
+      })
+    );
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Masih lama (10 hari): tidak cocok dengan kondisi daysLeft <= 3.
+    await owner`update teams set plan_expires_at = now() + interval '10 days' where id = ${A.teamId}`;
+    await scanTeam(A.teamId, today);
+    expect(await listRuns(A.teamId, { ruleId: r.id })).toHaveLength(0);
+
+    // Dua hari lagi: satu pengingat; pemindaian ulang tidak menggandakannya.
+    await owner`update teams set plan_expires_at = now() + interval '2 days' where id = ${A.teamId}`;
+    await scanTeam(A.teamId, today);
+    await scanTeam(A.teamId, today);
+    const runs = await listRuns(A.teamId, { ruleId: r.id });
+    expect(runs).toHaveLength(1);
+    const mine = (await listNotifications(A.teamId, u1, { limit: 100 })).filter((n) => n.ruleId === r.id);
+    expect(mine).toHaveLength(1);
+    expect(mine[0].title).toMatch(/^Paket pro berakhir \d{4}-\d{2}-\d{2} \([123] hari lagi\)$/);
+    expect(mine[0].link).toBe('/pricing');
+
+    // Setelah diperpanjang (tanggal berakhir baru), pengingat berikutnya boleh muncul lagi.
+    await owner`update teams set plan_expires_at = now() + interval '1 month 2 days' where id = ${A.teamId}`;
+    await owner`update teams set plan_expires_at = now() + interval '3 days' where id = ${A.teamId}`;
+    await scanTeam(A.teamId, today);
+    expect(await listRuns(A.teamId, { ruleId: r.id })).toHaveLength(2);
+    await owner`update teams set plan_expires_at = now() + interval '1 month' where id = ${A.teamId}`;
+  });
+});
+
 describe('endpoint cron', () => {
   const call = (auth?: string) =>
     POST(new Request('http://localhost/api/cron/automation', { method: 'POST', headers: auth ? { authorization: auth } : {} }));
