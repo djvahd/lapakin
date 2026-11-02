@@ -5,6 +5,7 @@
     "build": "next build",
     "start": "next start",
     "db:seed": "npx tsx lib/db/seed.ts",
+    "db:seed:demo": "npx tsx scripts/seed-demo.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
