@@ -1,11 +1,18 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "main": ".open-next/worker.js",
+  // worker.ts membungkus .open-next/worker.js dan menambahkan handler `scheduled` untuk Cron Trigger.
+  "main": "worker.ts",
   "name": "lapakin",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
-  }
+  },
+  // Pekerjaan harian otomasi: 01:00 UTC (08:00 WIB). Butuh secret CRON_SECRET.
+  "triggers": { "crons": ["0 1 * * *"] },
+  // Eksplisit: situs tetap di workers.dev sampai ada domain kustom, tetapi URL pratinjau per versi dimatikan
+  // karena Wrangler mengaktifkannya secara bawaan dan itu membuka versi yang belum dirilis ke publik.
+  "workers_dev": true,
+  "preview_urls": false
 }

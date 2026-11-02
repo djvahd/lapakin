@@ -111,3 +111,13 @@ Tabel baru otomatis dapat hak untuk `lapakin_app` lewat default privileges (migr
 - Pembayaran tidak bisa dihapus atau diubah, dan faktur yang sudah menerima pembayaran tidak bisa dibatalkan, jadi data uji dengan pembayaran tetap tersimpan.
 - PDF dibuat lewat dialog cetak peramban ("Save as PDF"), tanpa library, sehingga tidak ada dependensi baru di Workers.
 - Belum ada: pengingat tagih otomatis (menunggu mesin otomasi, issue #18) dan pembayaran lewat gateway (issue #12). PPN dan e-Faktur juga belum.
+
+### Catatan rilis mesin otomasi dan Cron Trigger (migrasi 0008)
+
+- `0008_automation.sql` membuat `auto_rules`, `auto_runs`, `auto_notifications` (RLS). Hak DML datang dari default privileges (migrasi 0002).
+- `wrangler.jsonc` kini memakai `worker.ts` sebagai entri: ia membungkus worker hasil build OpenNext dan menambahkan handler `scheduled`. Cron berjalan harian pukul 01:00 UTC (08:00 WIB) dan memanggil `POST /api/cron/automation` lewat handler yang sama.
+- **Wajib sebelum deploy:** `pnpm exec wrangler secret put CRON_SECRET` (nilai acak panjang). Tanpa itu endpoint menjawab 503 dan handler `scheduled` melewati pekerjaannya dengan log kesalahan. `BASE_URL` yang sudah ada dipakai sebagai alamat dasar permintaan internal.
+- `workers_dev` dibuat eksplisit `true` (situs tetap di workers.dev sampai ada domain kustom) dan `preview_urls` `false` (URL pratinjau per versi tidak lagi publik).
+- Setelah deploy, uji: buat aturan di Automation untuk "Invoice is overdue", pastikan ada faktur terbit yang lewat tempo, lalu picu cron dari dasbor Cloudflare (Workers, lapakin, Triggers) atau tunggu jadwalnya; cek Notifications dan riwayat eksekusi aturan. Panggilan manual: `curl -X POST -H "Authorization: Bearer <CRON_SECRET>" https://<url>/api/cron/automation`.
+- Pengingat diulang paling cepat seminggu sekali per faktur dan per aturan. Pemindaian harian menelusuri semua toko; toko tanpa aturan aktif hanya memakan satu query.
+- Hanya notifikasi di dalam aplikasi. Email dan WhatsApp belum ada (tambahkan sebagai aksi baru di `modules/automation/handlers.ts`).
