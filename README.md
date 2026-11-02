@@ -42,6 +42,7 @@ Prasyarat: Node 24, pnpm 11, dan sebuah branch Neon untuk pengembangan.
 ## Rilis dan operasional
 
 - Deploy ke Cloudflare, urutan rilis dengan migrasi, dan catatan rilis per modul: [docs/deploy-cloudflare.md](docs/deploy-cloudflare.md).
+- Pemantauan produksi (log galat dan pemantau waktu aktif): [docs/monitoring.md](docs/monitoring.md).
 - Pendaftaran Midtrans dan dokumen pendukungnya: [docs/midtrans-onboarding.md](docs/midtrans-onboarding.md).
 
 ## Dokumen lain

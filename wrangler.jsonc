@@ -14,5 +14,7 @@
   // Eksplisit: situs tetap di workers.dev sampai ada domain kustom, tetapi URL pratinjau per versi dimatikan
   // karena Wrangler mengaktifkannya secara bawaan dan itu membuka versi yang belum dirilis ke publik.
   "workers_dev": true,
-  "preview_urls": false
+  "preview_urls": false,
+  // Workers Logs: log permintaan dan console.error (termasuk galat server dari instrumentation.ts) bisa dicari di dasbor.
+  "observability": { "enabled": true, "head_sampling_rate": 1 }
 }
