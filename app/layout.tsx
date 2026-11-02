@@ -5,8 +5,8 @@ import { getUser, getTeamForUser } from '@/lib/db/queries';
 import { SWRConfig } from 'swr';
 
 export const metadata: Metadata = {
-  title: 'Next.js SaaS Starter',
-  description: 'ERP and CRM for small and medium businesses.'
+  title: 'Lapakin: ERP dan CRM untuk usaha kecil dan menengah',
+  description: 'Kelola kontak, peluang penjualan, stok, penawaran, faktur, dan pembayaran dalam satu aplikasi. Paket Free tersedia.'
 };
 
 export const viewport: Viewport = {
