@@ -7,8 +7,8 @@ export const SITE = {
   // Nama pemilik usaha atau badan hukum yang menerima pembayaran.
   legalName: 'Jovanic Adriel Harjanto' as string | null,
   email: 'adrielharjanto@gmail.com' as string | null,
-  phone: '081229237709' as string | null,
-  address: 'Jl. Delima Raya D1/18' as string | null,
+  phone: '+62 812-2923-7709' as string | null,
+  address: 'Jl. Delima Raya D1/18, RT 002/RW 002, Kelurahan Kramat Utara, Kecamatan Magelang Utara, Kota Magelang, Jawa Tengah 56115' as string | null,
   // Tanggal revisi terakhir halaman hukum.
   legalUpdated: '2 November 2026',
 };
