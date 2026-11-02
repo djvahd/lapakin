@@ -5,10 +5,10 @@ export const SITE = {
   name: 'Lapakin',
   tagline: 'ERP dan CRM ringan untuk usaha kecil dan menengah',
   // Nama pemilik usaha atau badan hukum yang menerima pembayaran.
-  legalName: null as string | null,
-  email: null as string | null,
-  phone: null as string | null,
-  address: null as string | null,
+  legalName: 'Jovanic Adriel Harjanto' as string | null,
+  email: 'adrielharjanto@gmail.com' as string | null,
+  phone: '081229237709' as string | null,
+  address: 'Jl. Delima Raya D1/18' as string | null,
   // Tanggal revisi terakhir halaman hukum.
   legalUpdated: '2 November 2026',
 };

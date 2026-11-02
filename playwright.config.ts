@@ -13,7 +13,9 @@ export default defineConfig({
   // Di CI satu ulangan menyerap kegagalan koneksi sesaat ke database; lokal tanpa ulangan agar kegagalan terlihat.
   retries: process.env.CI ? 1 : 0,
   forbidOnly: Boolean(process.env.CI),
-  timeout: 60_000,
+  timeout: 90_000,
+  // Aksi server dan revalidasi di runner CI lebih lambat daripada lokal; 5 detik bawaan terlalu ketat.
+  expect: { timeout: 15_000 },
   reporter: [['list']],
   globalSetup: './e2e/global-setup.ts',
   globalTeardown: './e2e/global-teardown.ts',

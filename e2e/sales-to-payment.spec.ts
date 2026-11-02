@@ -23,14 +23,17 @@ test('dari penawaran sampai faktur lunas, dengan stok berkurang saat pengiriman'
   await page.getByRole('button', { name: 'Create quotation' }).click();
   await page.waitForURL(/\/dashboard\/sales\/\d+$/);
 
+  // Stok awal dibaca, bukan diasumsikan 10: bila percobaan pertama sudah mengirim lalu diulang (retry),
+  // data toko uji yang sama masih ada, jadi tes harus benar dari stok berapa pun.
+  const before = await stock();
   await page.getByRole('button', { name: 'Confirm order' }).click();
   await expect(page.getByRole('button', { name: 'Record delivery' })).toBeVisible();
-  expect(await stock()).toBe(10);
+  expect(await stock()).toBe(before);
 
-  // Kirim seluruhnya (jumlah bawaan = sisa): stok 10 -> 7.
+  // Kirim seluruhnya (jumlah bawaan = sisa): stok berkurang 3.
   await page.getByRole('button', { name: 'Record delivery' }).click();
   await expect(page.getByText('Everything has been delivered.')).toBeVisible();
-  await expect.poll(stock).toBe(7);
+  await expect.poll(stock).toBe(before - 3);
 
   // Faktur dari pesanan: bawaan menagih seluruh sisa.
   await page.getByRole('link', { name: '+ New invoice' }).click();
