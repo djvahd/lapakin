@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import useSWR from 'swr';
 import { Button } from '@/components/ui/button';
-import { Users, Contact, Handshake, Package, ShoppingCart, Receipt, Settings, Shield, Activity, Menu } from 'lucide-react';
+import { Users, Contact, Handshake, Package, ShoppingCart, Receipt, Zap, Bell, Settings, Shield, Activity, Menu } from 'lucide-react';
 
 export default function DashboardLayout({
   children
@@ -13,6 +14,12 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // Lencana notifikasi belum dibaca; diperbarui tiap menit dan saat jendela kembali aktif.
+  const { data: unread } = useSWR<{ count: number }>(
+    '/api/notifications/unread',
+    (url: string) => fetch(url).then((r) => r.json()),
+    { refreshInterval: 60_000 }
+  );
 
   const navItems = [
     { href: '/dashboard', icon: Users, label: 'Team' },
@@ -21,6 +28,8 @@ export default function DashboardLayout({
     { href: '/dashboard/inventory', icon: Package, label: 'Inventory' },
     { href: '/dashboard/sales', icon: ShoppingCart, label: 'Sales' },
     { href: '/dashboard/invoices', icon: Receipt, label: 'Invoices' },
+    { href: '/dashboard/automation', icon: Zap, label: 'Automation' },
+    { href: '/dashboard/notifications', icon: Bell, label: 'Notifications' },
     { href: '/dashboard/general', icon: Settings, label: 'General' },
     { href: '/dashboard/activity', icon: Activity, label: 'Activity' },
     { href: '/dashboard/security', icon: Shield, label: 'Security' }
@@ -68,6 +77,11 @@ export default function DashboardLayout({
                 >
                   <item.icon className="h-4 w-4" />
                   {item.label}
+                  {item.href === '/dashboard/notifications' && unread && unread.count > 0 && (
+                    <span className="ml-auto rounded-full bg-orange-500 px-2 py-0.5 text-xs font-medium text-white">
+                      {unread.count > 99 ? '99+' : unread.count}
+                    </span>
+                  )}
                 </Button>
               </Link>
             ))}
