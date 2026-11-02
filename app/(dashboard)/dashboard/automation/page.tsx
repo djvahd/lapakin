@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { can } from '@/lib/auth/permissions';
 import { getTenantContext } from '@/lib/auth/tenant';
 import { EVENTS, type EventName } from '@/modules/automation/events';
+import { getSubscription } from '@/lib/payments/subscription';
 import { listRules } from '@/modules/automation/service';
 
 export default async function AutomationPage() {
@@ -14,19 +15,33 @@ export default async function AutomationPage() {
 
   const rules = await listRules(ctx.teamId);
   const canManage = can(ctx.role, 'automation:manage');
+  const pro = (await getSubscription(ctx.teamId)).active;
 
   return (
     <section className="flex-1 p-4 lg:p-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-lg lg:text-2xl font-medium text-gray-900">Automation</h1>
         {canManage && (
-          <Link href="/dashboard/automation/new">
+          <Link href={pro ? '/dashboard/automation/new' : '/pricing'}>
             <Button className="bg-orange-500 hover:bg-orange-600 text-white">
-              <Plus className="mr-2 h-4 w-4" /> New rule
+              {pro ? (
+                <>
+                  <Plus className="mr-2 h-4 w-4" /> New rule
+                </>
+              ) : (
+                'Upgrade to Pro'
+              )}
             </Button>
           </Link>
         )}
       </div>
+
+      {!pro && (
+        <p className="mb-6 rounded-md bg-yellow-50 p-3 text-sm text-yellow-800">
+          Automation is part of the Pro plan. Existing rules are kept but do not run until Pro is active.{' '}
+          <Link href="/pricing" className="font-medium underline">See plans</Link>
+        </p>
+      )}
 
       <Card>
         <CardHeader>

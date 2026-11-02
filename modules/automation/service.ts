@@ -2,6 +2,7 @@ import { and, count, desc, eq, isNull, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/drizzle';
 import { withTenant } from '@/lib/db/tenant';
 import { auditEntry } from '@/lib/audit';
+import { getSubscription } from '@/lib/payments/subscription';
 import { matches } from './engine';
 import type { EventName, EventPayload } from './events';
 import { HANDLERS } from './handlers';
@@ -14,7 +15,15 @@ import type { RuleInput } from './schemas';
 
 export type Actor = { teamId: number; userId: number };
 
-export type AutomationErrorCode = 'not_found';
+export type AutomationErrorCode = 'not_found' | 'plan_required';
+
+// Otomasi adalah fitur paket Pro (lihat lib/payments/plans.ts). Mematikan atau menghapus aturan tetap
+// boleh di paket Free supaya pengguna yang paketnya habis bisa merapikan aturannya.
+async function requirePro(teamId: number) {
+  if (!(await getSubscription(teamId)).active) {
+    throw new AutomationError('plan_required', 'Automation is part of the Pro plan. Upgrade on the Pricing page.');
+  }
+}
 
 export class AutomationError extends Error {
   constructor(
@@ -50,6 +59,7 @@ export async function getRule(teamId: number, id: number): Promise<AutoRule | nu
 
 export async function createRule(actor: Actor, input: RuleInput): Promise<AutoRule> {
   const { teamId, userId } = actor;
+  await requirePro(teamId);
   const [[created]] = await withTenant(teamId, [
     db
       .insert(autoRules)
@@ -77,6 +87,7 @@ export async function createRule(actor: Actor, input: RuleInput): Promise<AutoRu
 
 export async function updateRule(actor: Actor, id: number, input: RuleInput): Promise<AutoRule> {
   const { teamId, userId } = actor;
+  if (input.active) await requirePro(teamId);
   const [rows] = await withTenant(teamId, [
     db
       .update(autoRules)
@@ -105,6 +116,7 @@ export async function updateRule(actor: Actor, id: number, input: RuleInput): Pr
 
 export async function setRuleActive(actor: Actor, id: number, active: boolean): Promise<AutoRule> {
   const { teamId, userId } = actor;
+  if (active) await requirePro(teamId);
   const [rows] = await withTenant(teamId, [
     db
       .update(autoRules)

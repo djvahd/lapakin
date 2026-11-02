@@ -9,6 +9,16 @@ test('aturan otomasi dan notifikasi', async ({ page }) => {
   const sql = ownerSql();
   await signIn(page);
 
+  // Free: otomasi ditawarkan sebagai upgrade, bukan form.
+  await page.goto('/dashboard/automation');
+  await expect(page.getByText('Automation is part of the Pro plan.')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Upgrade to Pro' })).toBeVisible();
+  await page.goto('/dashboard/automation/new');
+  await page.waitForURL('**/dashboard/automation');
+
+  // Beri toko uji paket Pro selama tes ini; dikembalikan ke Free di akhir agar spec lain tetap Free.
+  await sql`update teams set plan_name = 'pro', subscription_status = 'active', plan_expires_at = now() + interval '1 month' where id = ${s.teamId}`;
+
   await page.goto('/dashboard/automation/new');
   await page.getByLabel('Name').fill('Ingatkan tagihan lewat tempo');
   await page.getByRole('button', { name: 'Add condition' }).click();
@@ -40,4 +50,9 @@ test('aturan otomasi dan notifikasi', async ({ page }) => {
   await expect(page.getByRole('link', { name: 'Faktur F0001 lewat tempo' })).toBeVisible();
   await page.getByRole('button', { name: 'Mark all as read' }).click();
   await expect(page.getByText('(0 unread)')).toBeVisible();
+});
+
+test.afterAll(async () => {
+  const s = loadState();
+  await ownerSql()`update teams set plan_name = null, subscription_status = null, plan_expires_at = null where id = ${s.teamId}`;
 });
