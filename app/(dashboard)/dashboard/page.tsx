@@ -10,7 +10,7 @@ import {
   CardFooter
 } from '@/components/ui/card';
 import { customerPortalAction } from '@/lib/payments/actions';
-import { useActionState } from 'react';
+import { useActionState, useEffect } from 'react';
 import { TeamDataWithMembers, User } from '@/lib/db/schema';
 import {
   removeTeamMember,
@@ -41,12 +41,17 @@ function useMembership() {
 }
 
 function StoreName() {
-  const { data: team } = useSWR<TeamDataWithMembers>('/api/team', fetcher);
+  const { data: team, mutate } = useSWR<TeamDataWithMembers>('/api/team', fetcher);
   const { isOwner } = useMembership();
   const [state, action, isPending] = useActionState<ActionState, FormData>(
     updateTeamName,
     {}
   );
+
+  // React mereset form ke defaultValue setelah aksi selesai; tanpa revalidasi nilainya masih nama lama.
+  useEffect(() => {
+    if (state.success) mutate();
+  }, [state, mutate]);
 
   return (
     <Card className="mb-8">
