@@ -13,6 +13,9 @@ export default defineConfig({
   // Di CI satu ulangan menyerap kegagalan koneksi sesaat ke database; lokal tanpa ulangan agar kegagalan terlihat.
   retries: process.env.CI ? 1 : 0,
   forbidOnly: Boolean(process.env.CI),
+  // Bila beberapa tes gagal berturut-turut penyebabnya hampir pasti sistemik (login rusak, skema tidak cocok):
+  // berhenti cepat daripada menunggu semua tes kehabisan waktu (kejadian nyata: 25 menit terbuang).
+  maxFailures: process.env.CI ? 3 : 0,
   timeout: 90_000,
   // Aksi server dan revalidasi di runner CI lebih lambat daripada lokal; 5 detik bawaan terlalu ketat.
   expect: { timeout: 15_000 },

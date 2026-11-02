@@ -42,3 +42,15 @@ Setelah CI hijau pertama kali, wajibkan `test` dan `e2e` lulus sebelum merge: Se
 - Migrasi baru diterapkan ke database CI oleh langkah `pnpm db:migrate` sebelum tes, jadi PR yang menambah migrasi diuji terhadap skema barunya.
 - Tes yang menyentuh Midtrans memakai `fetch` palsu; tidak ada kunci Midtrans di CI.
 - Satu ulangan otomatis di E2E (`retries: 1` saat `CI` diset) menyerap putus koneksi sesaat ke Neon; tes Vitest tidak diulang.
+
+## Migrasi destruktif dan PR yang sedang terbuka
+
+Semua PR berbagi satu database CI, dan run CI menerapkan migrasi PR-nya ke database itu **secara permanen**. Migrasi yang hanya menambah aman bagi PR lain. Migrasi yang **menghapus** kolom atau tabel (mis. `0010_drop_stripe_columns`) merusak setiap PR terbuka yang belum menyerap kode barunya: kodenya masih membaca kolom yang sudah hilang, sehingga login gagal dan seluruh E2E macet.
+
+Gejala yang pernah terjadi: semua tes E2E yang butuh login gagal dengan batas waktu, hanya tes tanpa login yang lulus.
+
+Penanganan:
+
+1. Setelah merge PR dengan migrasi destruktif, jalankan `gh pr update-branch <nomor>` untuk setiap PR terbuka (atau rebase), lalu biarkan CI berjalan ulang.
+2. Hindari membuka PR baru dari `main` sebelum migrasi destruktif itu ter-merge; bila terlanjur, perbarui branch-nya.
+3. `maxFailures: 3` di CI membuat E2E berhenti cepat saat kegagalan seperti ini terjadi, sehingga kerugiannya beberapa menit, bukan 25.
