@@ -27,6 +27,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Check secrets
+        run: |
+          for v in MIGRATION_URL POSTGRES_URL AUTH_SECRET; do
+            if [ -z "${!v}" ]; then echo "::error::Secret CI_$v belum diisi (lihat docs/ci.md)"; exit 1; fi
+          done
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
