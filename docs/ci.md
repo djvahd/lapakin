@@ -16,7 +16,7 @@ Tes menulis data uji ke database sungguhan dan membersihkannya sendiri, jadi **p
 Siapkan sekali:
 
 1. Di Neon, buat branch `ci` dari `dev`.
-2. Pastikan role aplikasi `lapakin_app` ada di branch itu dan password-nya diatur: dari folder proyek, dengan `MIGRATION_URL` menunjuk ke branch `ci`, jalankan `node scripts/set-app-role-password.mjs` (lihat `docs/setup-neon.md`).
+2. Atur password role aplikasi `lapakin_app` di branch itu. Dari folder proyek, dengan `MIGRATION_URL` (variabel shell, bukan `.env`) menunjuk ke URL **owner** branch `ci`, jalankan `node scripts/set-app-role-password.mjs --print`. Tanpa `--print` skrip menolak jalan (agar `.env` dev tidak tertimpa). URL `lapakin_app` yang tercetak adalah isi `CI_POSTGRES_URL`. Langkah lengkap dengan PowerShell ada di [docs/ci-setup-walkthrough.md](ci-setup-walkthrough.md).
 3. Tambahkan tiga secret di GitHub (Settings, Secrets and variables, Actions, New repository secret):
 
 | Secret | Isi |
