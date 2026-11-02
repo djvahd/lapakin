@@ -23,7 +23,7 @@ cp .env.example .env
 openssl rand -base64 32
 ```
 
-Buka `.env`, isi `POSTGRES_URL` dengan connection string tadi, dan `AUTH_SECRET` dengan hasil `openssl`. Biarkan nilai Stripe sebagai placeholder. Itu hanya agar aplikasi bisa dijalankan sampai Issue #12 selesai.
+Buka `.env`, isi `POSTGRES_URL` dengan connection string tadi, dan `AUTH_SECRET` dengan hasil `openssl`. `MIDTRANS_SERVER_KEY` boleh dikosongkan; hanya pembayaran langganan di halaman harga yang membutuhkannya.
 
 `.env` sudah masuk `.gitignore`. Cek dengan `git status`: file `.env` tidak boleh muncul.
 
@@ -41,5 +41,5 @@ Buka http://localhost:3000, masuk dengan akun uji, dan pastikan dashboard terbuk
 
 ## Catatan
 
-- Skrip `db:setup` bawaan starter dihapus karena mewajibkan Stripe CLI dan Docker. Seed tidak lagi membuat produk Stripe.
+- Skrip `db:setup` bawaan starter dihapus karena mewajibkan Stripe CLI dan Docker. Seed tidak membuat data pembayaran.
 - Untuk Cloudflare Workers (Issue #13) kemungkinan perlu connection string **pooled** dan driver yang berbeda. Itu dikerjakan di Issue tersebut.
