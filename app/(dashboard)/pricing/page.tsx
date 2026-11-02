@@ -4,11 +4,12 @@ import { can } from '@/lib/auth/permissions';
 import { getTenantContext } from '@/lib/auth/tenant';
 import { PLANS } from '@/lib/payments/plans';
 import { getSubscription } from '@/lib/payments/subscription';
+import { SiteFooter } from '@/components/site-footer';
 import { CheckoutButtons } from './checkout-buttons';
 
 const idr = (n: number) => `Rp${n.toLocaleString('id-ID')}`;
 
-const FREE_FEATURES = ['Coba semua modul dengan data sendiri', 'Tanpa kartu kredit', 'Upgrade kapan saja'];
+const FREE_FEATURES = ['Semua modul dengan data sendiri', 'Satu pengguna (pemilik toko)', 'Tanpa kartu kredit, upgrade kapan saja'];
 
 export default async function PricingPage() {
   const ctx = await getTenantContext();
@@ -17,6 +18,7 @@ export default async function PricingPage() {
   const canPay = ctx ? can(ctx.role, 'billing:manage') : false;
 
   return (
+    <>
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
         <div className="pt-6">
@@ -80,5 +82,7 @@ export default async function PricingPage() {
         </div>
       </div>
     </main>
+    <SiteFooter />
+    </>
   );
 }
