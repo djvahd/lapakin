@@ -43,6 +43,11 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           {/* key: status berubah setelah aksi, jadi tombol dipasang ulang bersama statusnya. */}
           <div className="flex flex-wrap items-start gap-2" key={inv.status}>
             {draft && <StatusButton id={id} action={issueInvoiceAction} label="Issue invoice" primary />}
+            {inv.status !== 'draft' && (
+              <Link href={`/dashboard/invoices/${id}/print`} className="inline-flex h-9 items-center rounded-md border px-4 text-sm">
+                Print / PDF
+              </Link>
+            )}
             {canVoid && <StatusButton id={id} action={voidInvoiceAction} label="Void invoice" />}
           </div>
         </div>
