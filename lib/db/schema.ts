@@ -7,6 +7,10 @@ import {
   timestamp,
   integer,
   jsonb,
+  numeric,
+  uniqueIndex,
+  index,
+  check,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 
@@ -39,12 +43,50 @@ export const teams = pgTable('teams', {
   name: varchar('name', { length: 100 }).notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  // Kolom stripe_* tidak dipakai lagi (Stripe diganti Midtrans, Issue #12); dibiarkan agar rollback kode
+  // lama tetap jalan, dihapus lewat migrasi tersendiri nanti.
   stripeCustomerId: text('stripe_customer_id').unique(),
   stripeSubscriptionId: text('stripe_subscription_id').unique(),
   stripeProductId: text('stripe_product_id'),
   planName: varchar('plan_name', { length: 50 }),
   subscriptionStatus: varchar('subscription_status', { length: 20 }),
+  // Paket berbayar berlaku sampai tanggal ini; null berarti belum pernah berlangganan.
+  planExpiresAt: timestamp('plan_expires_at'),
 });
+
+export const SUB_PAYMENT_STATUSES = ['pending', 'paid', 'failed', 'expired'] as const;
+export type SubPaymentStatus = (typeof SUB_PAYMENT_STATUSES)[number];
+
+// Pembayaran langganan lewat Midtrans Snap. `orderId` unik dan memuat id toko, sehingga webhook
+// (tanpa sesi) bisa menentukan toko dari order_id lalu bekerja dalam konteks tenant.
+export const subPayments = pgTable(
+  'sub_payments',
+  {
+    id: serial('id').primaryKey(),
+    teamId: integer('team_id')
+      .notNull()
+      .references(() => teams.id),
+    orderId: varchar('order_id', { length: 50 }).notNull(),
+    plan: varchar('plan', { length: 20 }).notNull(),
+    period: varchar('period', { length: 10 }).notNull(),
+    amount: numeric('amount', { precision: 14, scale: 2, mode: 'number' }).notNull(),
+    status: varchar('status', { length: 10 }).notNull().default('pending'),
+    snapToken: text('snap_token'),
+    redirectUrl: text('redirect_url'),
+    paymentType: varchar('payment_type', { length: 30 }),
+    paidAt: timestamp('paid_at'),
+    createdBy: integer('created_by').references(() => users.id),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    tenantIsolation(),
+    uniqueIndex('sub_payments_order_unique').on(t.orderId),
+    check('sub_payments_status_check', sql`${t.status} in ('pending', 'paid', 'failed', 'expired')`),
+    check('sub_payments_period_check', sql`${t.period} in ('month', 'year')`),
+    index('sub_payments_team_idx').on(t.teamId, t.createdAt),
+  ]
+);
 
 export const teamMembers = pgTable('team_members', {
   id: serial('id').primaryKey(),
