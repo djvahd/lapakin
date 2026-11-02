@@ -5,12 +5,14 @@ import { can } from '@/lib/auth/permissions';
 import { getTenantContext } from '@/lib/auth/tenant';
 import { createRuleAction } from '@/modules/automation/actions';
 import { eventOptions } from '@/modules/automation/events';
+import { getSubscription } from '@/lib/payments/subscription';
 import { RuleForm } from '@/modules/automation/ui/rule-form';
 
 export default async function NewRulePage() {
   const ctx = await getTenantContext();
   if (!ctx) redirect('/sign-in');
   if (!can(ctx.role, 'automation:manage')) redirect('/dashboard/automation');
+  if (!(await getSubscription(ctx.teamId)).active) redirect('/dashboard/automation');
 
   return (
     <section className="flex-1 p-4 lg:p-8">

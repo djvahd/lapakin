@@ -17,6 +17,7 @@ import {
 import { audit } from '@/lib/audit';
 import { comparePasswords, hashPassword, setSession } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
+import { getSubscription } from '@/lib/payments/subscription';
 import { cookies } from 'next/headers';
 import { getUser, getUserWithTeam } from '@/lib/db/queries';
 import {
@@ -404,6 +405,11 @@ export const inviteTeamMember = validatedActionWithTenant(
     const { email, role } = data;
     const userWithTeam = { teamId: ctx.teamId };
     const user = ctx.user;
+
+    // Paket Free: satu pengguna (pemilik). Anggota yang sudah ada tetap berlaku.
+    if (!(await getSubscription(ctx.teamId)).active) {
+      return { error: 'Inviting team members is part of the Pro plan. Upgrade on the Pricing page.' };
+    }
 
     const existingMember = await db
       .select()

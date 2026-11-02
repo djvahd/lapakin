@@ -42,6 +42,7 @@ beforeAll(async () => {
   const a = (await owner`insert into teams (name) values (${tag + '-a'}) returning id`)[0].id as number;
   A = { teamId: a, userId: u1 };
   await owner`insert into team_members (user_id, team_id, role) values (${u1}, ${a}, 'owner'), (${u2}, ${a}, 'member')`;
+  await owner`update teams set plan_name = 'pro', subscription_status = 'active', plan_expires_at = now() + interval '1 month' where id = ${a}`;
   const [[c]] = await withTenant(a, [db.insert(contacts).values({ teamId: a, kind: 'person', name: 'Budi' }).returning()]);
   contactA = c.id;
 });

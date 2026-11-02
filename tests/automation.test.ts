@@ -52,6 +52,7 @@ beforeAll(async () => {
   B = { teamId: b, userId: u1 };
   // Tim A: u1 owner, u2 member. Tim B: u1 owner.
   await owner`insert into team_members (user_id, team_id, role) values (${u1}, ${a}, 'owner'), (${u2}, ${a}, 'member'), (${u1}, ${b}, 'owner')`;
+  await owner`update teams set plan_name = 'pro', subscription_status = 'active', plan_expires_at = now() + interval '1 month' where id in (${a}, ${b})`;
 });
 
 afterAll(async () => {

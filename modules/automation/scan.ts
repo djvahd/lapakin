@@ -4,6 +4,7 @@ import { formatNumber } from '@/modules/billing/audit-labels';
 import { listQuerySchema as invoiceQuery } from '@/modules/billing/schemas';
 import { listInvoices } from '@/modules/billing/service';
 import { listFollowUps } from '@/modules/crm/service';
+import { getSubscription } from '@/lib/payments/subscription';
 import { emit, listRules } from './service';
 
 // Pemindai terjadwal: peristiwa berbasis waktu ("faktur lewat jatuh tempo") tidak terjadi lewat
@@ -65,6 +66,8 @@ export async function scanOverdueFollowUps(teamId: number, today: string) {
 
 // Memindai satu toko bila punya aturan aktif untuk peristiwa terjadwal; selain itu dilewati murah.
 export async function scanTeam(teamId: number, today: string) {
+  // Aturan hanya berjalan selama paket Pro aktif; setelah habis aturan tetap tersimpan tetapi diam.
+  if (!(await getSubscription(teamId)).active) return { emitted: 0, failed: 0 };
   const rules = (await listRules(teamId)).filter((r) => r.active);
   const wants = (event: string) => rules.some((r) => r.event === event);
   const total = { emitted: 0, failed: 0 };
