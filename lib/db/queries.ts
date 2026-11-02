@@ -152,3 +152,9 @@ export async function listTeamMembers(teamId: number) {
     .where(and(eq(teamMembers.teamId, teamId), isNull(users.deletedAt)))
     .orderBy(asc(users.name), asc(users.email));
 }
+
+// Nama toko untuk dokumen cetak (faktur).
+export async function getTeamName(teamId: number): Promise<string | null> {
+  const [row] = await db.select({ name: teams.name }).from(teams).where(eq(teams.id, teamId)).limit(1);
+  return row?.name ?? null;
+}

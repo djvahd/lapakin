@@ -103,3 +103,11 @@ Tabel baru otomatis dapat hak untuk `lapakin_app` lewat default privileges (migr
 - Setelah deploy, uji di produksi: buat penawaran dari halaman peluang CRM (tombol "+ New quotation"), konfirmasi, catat pengiriman sebagian (stok varian harus berkurang di Inventory), lalu coba kirim lebih dari sisa (harus ditolak).
 - Pengiriman memakai mutasi stok jenis `sale` yang tidak bisa dihapus. Pesanan yang sudah punya pengiriman tidak bisa dibatalkan, jadi data uji dengan pengiriman tetap tersimpan; gunakan produk uji yang bisa diarsipkan.
 - Pajak (PPN) belum ada di Sales; ditangani di modul Invoicing.
+
+### Catatan rilis modul Invoicing (migrasi 0007)
+
+- `0007_invoicing.sql` membuat `bill_invoices`, `bill_lines`, `bill_payments` (awalan `bill_` karena `inv_` milik Inventory) dan mencabut `UPDATE`/`DELETE` pada `bill_payments` dari `lapakin_app` (pembayaran hanya bertambah). Pencabutan ada di akhir berkas, jadi berlaku setelah default privileges.
+- Setelah deploy, uji di produksi: dari pesanan terkonfirmasi buat faktur (boleh sebagian), terbitkan, catat pembayaran sebagian lalu sisanya, coba bayar lebih dari sisa (harus ditolak), buka Print / PDF, dan periksa ringkasan piutang di halaman Invoices.
+- Pembayaran tidak bisa dihapus atau diubah, dan faktur yang sudah menerima pembayaran tidak bisa dibatalkan, jadi data uji dengan pembayaran tetap tersimpan.
+- PDF dibuat lewat dialog cetak peramban ("Save as PDF"), tanpa library, sehingga tidak ada dependensi baru di Workers.
+- Belum ada: pengingat tagih otomatis (menunggu mesin otomasi, issue #18) dan pembayaran lewat gateway (issue #12). PPN dan e-Faktur juga belum.
