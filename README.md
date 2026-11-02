@@ -14,6 +14,7 @@ Fondasi: fork dari [nextjs/saas-starter](https://github.com/nextjs/saas-starter)
 
 - `pnpm test`: Vitest (logika bisnis dan integrasi database, butuh `MIGRATION_URL` dan `POSTGRES_URL` di `.env`).
 - `pnpm test:e2e`: Playwright, alur utama di peramban terhadap dev server lokal (port 3100) dan database dev. Tes membuat toko uji sendiri dan menghapusnya sesudahnya. Pertama kali: `pnpm exec playwright install chromium`. Tanpa mengunduh Chromium, pakai peramban terpasang: `E2E_CHANNEL=msedge pnpm test:e2e` (atau `chrome`).
+- CI: GitHub Actions menjalankan typecheck, Vitest, dan Playwright pada setiap PR; penyiapan secret dan database CI ada di [docs/ci.md](docs/ci.md).
 
 ## Lisensi
 
