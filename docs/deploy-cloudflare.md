@@ -130,3 +130,11 @@ Tabel baru otomatis dapat hak untuk `lapakin_app` lewat default privileges (migr
 - Batas paket (berlaku sejak PR ini): **Free** = satu pengguna (mengundang anggota ditolak) dan tanpa otomasi; **Pro** = anggota tanpa batas dan otomasi. Anggota yang sudah ada tidak dikeluarkan bila paket habis. Aturan otomasi yang sudah ada tetap tersimpan tetapi tidak berjalan (pemindai harian melewati toko tanpa Pro aktif), dan di Free aturan hanya bisa dimatikan atau dihapus. Pro dianggap aktif selama `plan_expires_at` belum lewat; pemeriksaannya di `getSubscription`.
 - Pengingat perpanjangan: buat aturan di Automation dengan pemicu "Pro subscription is about to expire" (bidang `plan`, `expiresOn`, `daysLeft`), mis. kondisi `daysLeft <= 3`. Pemindai harian mengirim satu pengingat per masa berlaku. Setelah paket habis toko kembali ke Free sehingga pemindai berhenti; tidak ada pengingat "sudah habis".
 - Belum ada: refund/chargeback (diabaikan webhook, ditangani manual) dan uji ke sandbox sungguhan (butuh server key sandbox).
+
+### Migrasi 0010 (hapus kolom stripe_*): urutan rilis terbalik
+
+`0010_drop_stripe_columns.sql` menghapus kolom `stripe_customer_id`, `stripe_subscription_id`, dan `stripe_product_id` dari `teams`. Berbeda dari migrasi lain, ini **menghapus** kolom, jadi checklist rilis biasa (migrasi dulu, lalu deploy) akan merusak situs selama jeda antara keduanya: kode yang sedang berjalan masih memilih kolom itu. Urutannya:
+
+1. Pastikan produksi sudah menjalankan kode tanpa Stripe (`pnpm run cf:deploy` dari `main` setelah PR Midtrans) dan tidak ada pembayaran Stripe yang pernah tercatat (query pemeriksaan ada di komentar berkas migrasi).
+2. Baru terapkan migrasi 0010 ke produksi.
+3. Rollback ke kode sebelum Midtrans tidak lagi mungkin setelah ini.

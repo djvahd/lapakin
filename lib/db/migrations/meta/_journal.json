@@ -71,6 +71,13 @@
       "when": 1793612646613,
       "tag": "0009_midtrans_subscriptions",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793614687224,
+      "tag": "0010_drop_stripe_columns",
+      "breakpoints": true
     }
   ]
 }
