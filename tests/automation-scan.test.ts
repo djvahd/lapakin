@@ -10,6 +10,7 @@ import { createActivity, createOpportunity } from '@/modules/crm/service';
 import { ruleInputSchema } from '@/modules/automation/schemas';
 import { createRule, listNotifications, listRuns, type Actor } from '@/modules/automation/service';
 import { scanTeam } from '@/modules/automation/scan';
+import { todayIn } from '@/modules/crm/format';
 import { orderInputSchema } from '@/modules/sales/schemas';
 import { confirmOrder, createOrder, getOrder } from '@/modules/sales/service';
 import { POST } from '@/app/api/cron/automation/route';
@@ -134,7 +135,8 @@ describe('pemindai langganan', () => {
         actionConfig: { title: 'Paket {{plan}} berakhir {{expiresOn}} ({{daysLeft}} hari lagi)', link: '/pricing' },
       })
     );
-    const today = new Date().toISOString().slice(0, 10);
+    // Tanggal "hari ini" harus zona WIB seperti cron produksi; tanggal UTC meleset sehari antara 17:00 dan 24:00 UTC.
+    const today = todayIn();
 
     // Masih lama (10 hari): tidak cocok dengan kondisi daysLeft <= 3.
     await owner`update teams set plan_expires_at = now() + interval '10 days' where id = ${A.teamId}`;
