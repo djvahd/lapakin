@@ -16,7 +16,9 @@ const permissions = {
   'inventory:adjust': ['owner'],
   'inventory:archive': ['owner'],
   // Membuat, mengirim, dan mengonfirmasi penawaran terbuka untuk semua anggota; membatalkan pesanan terkonfirmasi hanya owner.
-  'sales:cancel': ['owner']
+  'sales:cancel': ['owner'],
+  // Membuat, menerbitkan faktur, dan mencatat pembayaran terbuka untuk semua anggota; membatalkan faktur hanya owner.
+  'invoice:void': ['owner']
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Permission = keyof typeof permissions;
