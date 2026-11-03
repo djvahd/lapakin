@@ -55,7 +55,7 @@ Data contoh yang kaya untuk demo: `pnpm db:seed:demo` (lihat [docs/demo.md](docs
 | [docs/learning-path.md](docs/learning-path.md) | Jalur belajar per modul |
 | [docs/architecture.md](docs/architecture.md) | Peta direktori, bentuk modul, multi-tenant, keputusan desain |
 | [docs/roadmap.md](docs/roadmap.md) | v1 selesai, v2 dan v3 dicatat |
-| [docs/sessions/backup-database.md](docs/sessions/backup-database.md) | Brief sesi khusus: backup database produksi |
+| [docs/backup-restore.md](docs/backup-restore.md) | Backup harian database dan cara memulihkannya |
 
 ## Lisensi
 

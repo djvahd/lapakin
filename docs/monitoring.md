@@ -40,7 +40,7 @@ Satu pemantau ini menangkap: situs mati, deploy rusak, database tidak terjangkau
 | Cron harian (01:00 UTC) | Observability, cari `Automation scan failed` / `Cron automation gagal` | Baris galat, atau pengingat tidak muncul |
 | Webhook Midtrans | Dasbor Midtrans, Transactions: status notifikasi | Notifikasi berstatus gagal (bukan 200) |
 | CI | Notifikasi email GitHub untuk run merah | Run `main` merah |
-| Backup database | Lihat `docs/sessions/backup-database.md` (belum dikerjakan) | Belum ada backup |
+| Backup database | Tab Actions, workflow "Backup database" ([panduan](backup-restore.md)) | Run merah, atau tidak ada run dalam 2 hari |
 
 ## Batasan
 

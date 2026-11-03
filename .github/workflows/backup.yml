@@ -1,0 +1,71 @@
+name: Backup database
+
+on:
+  schedule:
+    - cron: "0 20 * * *" # 03:00 WIB
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-database
+  cancel-in-progress: false
+
+env:
+  # Harus sama dengan atau lebih baru dari versi PostgreSQL di Neon.
+  PG_VERSION: "17"
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check secrets
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          BACKUP_AGE_PUBLIC_KEY: ${{ secrets.BACKUP_AGE_PUBLIC_KEY }}
+        run: |
+          for v in BACKUP_DATABASE_URL BACKUP_AGE_PUBLIC_KEY; do
+            if [ -z "${!v}" ]; then echo "::error::Secret $v belum diisi (lihat docs/backup-restore.md)"; exit 1; fi
+          done
+
+      - name: Install pg_dump and age
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq "postgresql-client-${PG_VERSION}" age
+
+      - name: Dump
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+        run: |
+          pg_dump --format=custom --no-owner --no-privileges --file="$RUNNER_TEMP/db.dump" "$BACKUP_DATABASE_URL"
+
+      - name: Sanity check
+        run: |
+          size=$(stat -c %s "$RUNNER_TEMP/db.dump")
+          echo "Ukuran dump: $size byte"
+          if [ "$size" -lt 10000 ]; then echo "::error::Dump terlalu kecil ($size byte)"; exit 1; fi
+          pg_restore --list "$RUNNER_TEMP/db.dump" > "$RUNNER_TEMP/toc.txt"
+          for t in users teams team_members contacts; do
+            grep -q "TABLE DATA public $t " "$RUNNER_TEMP/toc.txt" || { echo "::error::Tabel $t tidak ada di dump"; exit 1; }
+          done
+
+      - name: Encrypt
+        env:
+          BACKUP_AGE_PUBLIC_KEY: ${{ secrets.BACKUP_AGE_PUBLIC_KEY }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          age -r "$BACKUP_AGE_PUBLIC_KEY" -o "$RUNNER_TEMP/out/lapakin-$(date -u +%Y%m%d).dump.age" "$RUNNER_TEMP/db.dump"
+          rm -f "$RUNNER_TEMP/db.dump"
+          ls -l "$RUNNER_TEMP/out"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lapakin-db-backup
+          path: ${{ runner.temp }}/out/*.dump.age
+          retention-days: 30
+          if-no-files-found: error

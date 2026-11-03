@@ -138,3 +138,7 @@ Tabel baru otomatis dapat hak untuk `lapakin_app` lewat default privileges (migr
 1. Pastikan produksi sudah menjalankan kode tanpa Stripe (`pnpm run cf:deploy` dari `main` setelah PR Midtrans) dan tidak ada pembayaran Stripe yang pernah tercatat (query pemeriksaan ada di komentar berkas migrasi).
 2. Baru terapkan migrasi 0010 ke produksi.
 3. Rollback ke kode sebelum Midtrans tidak lagi mungkin setelah ini.
+
+## Backup database
+
+Neon Free hanya menyimpan riwayat 6 jam. Backup harian terenkripsi dan cara memulihkannya: [backup-restore.md](backup-restore.md).
