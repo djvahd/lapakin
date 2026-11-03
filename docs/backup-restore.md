@@ -115,6 +115,6 @@ Setelah uji selesai, hapus branch `restore-test` (atau pastikan tidak kedaluwars
 
 | Tanggal | Artefak | Hasil |
 |---|---|---|
-| (belum dijalankan) | | |
+| 2026-11-03 | Run 41581565825 (`lapakin-20261103.dump.age`, 125 KB setelah dekripsi) | Dekripsi dan `pg_restore` ke branch `restore-test` berhasil. Jumlah baris cocok dengan produksi: users 2, teams 2, contacts 3, activity_logs 38. Koneksi aplikasi ke hasil pulihan belum diuji. |
 
 Backup yang belum pernah dipulihkan belum bisa dianggap ada. Isi tabel ini setelah uji pertama.
