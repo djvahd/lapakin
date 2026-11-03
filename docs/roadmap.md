@@ -6,7 +6,7 @@ Sumber: [spesifikasi desain](superpowers/specs/2026-10-25-lapakin-design.md), ba
 
 Inti (multi-tenant, auth, audit), Kontak, CRM, Produk dan Inventory, Sales, Invoicing, mesin otomasi dengan pengingat, langganan Midtrans, situs publik, CI dan E2E.
 
-Yang masih menunggu di luar kode: persetujuan akun Midtrans lalu uji sandbox; backup database ([sessions/backup-database.md](sessions/backup-database.md)).
+Yang masih menunggu di luar kode: persetujuan akun Midtrans lalu uji sandbox; backup database (kode siap, menunggu penyiapan oleh pemilik dan uji pemulihan, lihat [backup-restore.md](backup-restore.md)).
 
 ## v2 (dicatat, belum dimulai)
 
